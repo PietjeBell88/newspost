@@ -1,0 +1,333 @@
+.TH "NEWSPOST" "1" "2.1.1" "Jim Faulkner" ""
+.SH "NAME"
+.LP 
+newspost \- a usenet binary autoposter
+.SH "SYNTAX"
+.LP 
+newspost [\fIoptions\fP [\fIarguments\fP]] <\fIfilenames\fP>
+.SH "DESCRIPTION"
+.LP 
+Newspost is a usenet binary autoposter.  It will uuencode or yencode files
+and post them to usenet newsgroups. In addition, it can automatically
+generate and post .SFV checksum files and .PAR parity files.
+.SH "OPTIONS"
+.LP 
+.TP 
+\fB\-i\fR <\fIaddress\fP>
+The news server to post to.  <\fIaddress\fP> must be either a hostname or
+an IP address.  If the NNTPSERVER environment variable is set, this is set
+to that value by default.
+.TP 
+\fB\-z\fR <\fInumber\fP>
+Sets the port on which to connect to <\fInumber\fP>.
+.TP 
+\fB\-u\fR <\fIstring\fP>
+Sets your username on the news server to <\fIstring\fP>.
+.TP 
+\fB\-p\fR <\fIstring\fP>
+Sets your password on the news server to <\fIstring\fP>.
+.TP 
+\fB\-f\fR <\fIaddress\fP>
+Your e\-mail address.  <\fIaddress\fP> must be a real e\-mail address, or
+your posts may fail.  If the USER and HOSTNAME environment variables are
+set, this is set to $USER@$HOSTNAME by default.
+.TP 
+\fB\-F\fR <\fIstring\fP>
+Sets your name in the From header line to <\fIstring\fP>.  Please note:  
+if your name has spaces in it, it should be enclosed in quotes.
+.TP 
+\fB\-o\fR <\fIstring\fP>
+Sets the Organization header line to <\fIstring\fP>.  Please note:  if
+your organization has spaces in it, it should be enclosed in quotes.
+.TP 
+\fB\-n\fR <\fIstring\fP>
+Sets the newsgroup to post to.  <\fIstring\fP> may also be a comma
+separated list of newsgroups, but you may only post to at most 5
+newsgroups.
+.TP 
+\fB\-s\fR <\fIstring\fP>
+Sets <\fIstring\fP> as the Subject header line.  This subject line is
+always appended with ' \- filename (1/9)' (depending on the filename, part
+number, and number of parts).  Other options may add or change information
+in the subject line (see those options for details).  Please note:  if
+your subject has spaces in it, it should be enclosed in quotes.  See
+EXAMPLES for more information.
+.TP 
+\fB\-w\fR <\fIstring\fP>
+Sets the Followup\-To header line.  <\fIstring\fP> must be a newsgroup.
+.TP 
+\fB\-m\fR <\fIaddress\fP>
+Sets the Reply\-To header line.  <\fIaddress\fP> must be an e\-mail address.
+.TP 
+\fB\-r\fR <\fIstring\fP>
+Set the References header line.  <\fIstring\fP> must be a message\-ID or a
+comma\-separated list of message\-IDs.
+.TP 
+\fB\-x\fR
+By default all posts include the "X\-No\-Archive: yes" header.  This
+option DISABLES that behaviour.
+.TP 
+\fB\-X\fR <\fIstring\fP>
+Sets <\fIstring\fP> as a complete header line.  This option may be
+specified multiple times to add more header lines.  Please note:  do not
+use this feature unless you know exactly what you are doing.
+.TP 
+\fB\-q\fR
+This specifies that ' \- File 01 of 10: ' (depending on the file number and
+number of files) will be added to the subject line after text specified by
+the \-s switch, and before the file information.  If the file being posted
+is a generated .SFV file, then the string is ' \- SFV File 1 of 1: '.  If
+the file is a generated .PAR file, the string is ' \- PAR File 01 of 10: '
+(depending on the .PAR file number and the number of .PAR files).  See
+EXAMPLES for more information.
+.TP 
+\fB\-y\fR
+Use yencoding instead of uuencoding.  Yencoding results in smaller, faster
+posts, but most news readers do not support yencoding.  When yencoding is
+enabled, ' \- "filename" yEnc (1/9)' is appended to the subject line
+instead of what is specified above for the \-s option.  Please see
+http://www.yenc.org for more information about yencoding.
+.TP 
+\fB\-e\fR <\fIfilename\fP>
+Posts <\fIfilename\fP> as a text file (no encoding) before the first file
+posted.  This file is posted with the exact subject line as the first file
+posted, except that (0/9) is displayed as the part number (depending on
+the number of parts in the first file posted).  As an alternative, "\-0" 
+(zero, not 'O') may be used instead of "\-e".
+.TP 
+\fB\-E\fR
+Opens the editor set by the EDITOR environment variable to create a
+temporary text file which is posted as a prefix, like a file specified
+with the \-e option.  If EDITOR is not set then vi is used.
+.TP 
+\fB\-c\fR <\fIfilename\fP>
+Generates and posts a .SFV checksum file named <\fIfilename\fP>.  If
+<\fIfilename\fP> does not end in '.sfv', it will automatically be appended
+to the filename.  Note the change from newspost 1.x, which used "\-v" for 
+this option; also, the .SFV file is now posted first instead of last.
+.TP 
+\fB\-a\fR <\fIfilename\fP>
+Generates and posts .PAR files whose name is based on <\fIfilename\fP>.  
+If <\fIfilename\fP> does not end in '.par', it will automatically be 
+appended to the filename.  The .PAR header will end in '.par', and 
+each .PAR volume will end in '.p01', '.p02', etcetera.  Please see
+http://parchive.sourceforge.net for more information about .PAR files.
+.TP 
+\fB\-A\fR <\fInumber\fP>
+Sets the number of .PAR volumes to create to <\fInumber\fP>.  This is in
+addition to the .PAR header file.  The \-a option must be used for this
+option to do anything.
+.TP 
+\fB\-B\fR <\fInumber\fP>
+Sets the number of .PAR volumes to create based on the number of files.  
+For every <\fInumber\fP> files, newspost will create one .PAR volume.  
+This is in addition to the .PAR header file.  By default, newspost creates
+one .PAR volume for every ten files posted.
+.TP 
+\fB\-l\fR <\fInumber\fP>
+Sets the number of lines per message to <\fInumber\fP>.  Most people post
+messages which are between 5000 and 10000 lines long.  By default, this is
+set to 7500.  Note: For uuencoded messages, this is the actual number of 
+lines in the body of the message; but for yencoded messages, it's used to 
+determine the size of each segment before encoding, by multiplying the 
+specified number of lines by 45 (which is the size of a uuencoded line 
+before encoding). Thus, the size of each segment before encoding is the
+same for either method, but the actual line count for yencoded segments 
+will vary.
+.TP 
+\fB\-t\fR
+When this option is specified, one file may be posted as a plain text
+message.  If no file is specified, EDITOR (or vi) is opened to create the
+message.
+.TP 
+\fB\-T\fR <\fInumber\fP>
+Sets the time to wait before posting to <\fInumber\fP>.  This number is
+interpreted in seconds by default, but you can specify, for example, "3m"
+if you want 3 minutes, or "1h" if you want 1 hour.  This number can also
+be specified in hours:minutes:seconds or minutes:seconds format.  e.g.
+"5:30" if you want to wait 5 minutes 30 seconds, or "4:0:0" if you want to
+wait 4 hours.  This value is set to 10 seconds by default, and may not be
+set to less than 3 seconds.
+.TP 
+\fB\-k\fR <\fIdirname\fP>
+Sets the directory to be used for storing temporary files to
+<\fIdirname\fP>.  <\fIdirname\fP> must exist. If the TMPDIR environment
+variable is set, this is set to that value by default.  If the TMP
+environment variable is set (and TMPDIR is not), this is set to that value
+by default.
+.TP 
+\fB\-d\fR
+Sets the current options as default by saving them to $HOME/.newspostrc.  
+Only the following options may be saved as default: \-i, \-z, \-u, \-p,
+\-f, \-F, \-o, \-n, \-w, \-m, \-x, \-q, \-y, \-B, \-l, \-X, and \-k.
+.TP 
+\fB\-D\fR <\fIoption\fP>
+This option disables or clears other options.  When y, q, or x is passed
+as <\fIoption\fP>, it has the OPPOSITE effect of either the \-y, \-q, or
+\-x option, respectively.  It will clear the corresponding options for u,
+p, F, o, w, and m.  It also takes X as an argument, but it clears ALL
+extra headers set with the \-X option.  This option may be specified
+multiple times with different values for <\fIoption\fP>.  Please note only
+options that are not required can be cleared.
+.TP 
+\fB\-v\fR
+When this option is specified, newspost will be extra verbose.  (Note that 
+"\-v" was used for .SFV generation in newspost 1.x.)
+.TP 
+\fB\-V\fR
+Print version information and exit.
+.TP 
+\fB\-h\fR
+Print help and exit.  This is the default when there are no arguments.
+.SH "PARTIAL AND FAKE POSTING"
+Parts of files may be posted by specifying filenames in the following
+format: 'filename:partnumbers'.  Colons in the first or second position 
+(as after a drive letter) are ignored.  Partnumbers is a comma\-separated list of
+parts to post.  Each item in the list may be any of three formats: '2' (a
+single part), '2\-5' (parts 2, 3, 4, and 5), or '2+' (part 2 and all parts
+up to and including the last part).  If, for example, you want to post
+parts 2, 4, 5, 6, 10, 11, and 12 of track01.mp3 (a 12 part file), you
+could specify the filename like this: 'track01.mp3:2,4\-6,10+'.  If there
+is no ':' in a specified filename, newspost will post the entire file. If
+the number 0 is specified after the colon, newspost will add the file to generated .SFV
+and .PAR files, and preserve ' \- File x of y: ' numbering, but not
+actually post the file.  See EXAMPLES for more information.  Please note:  If your files
+did not post completely, your file is much more likely to post properly if you repost 
+the entire file, or split the file into smaller parts and post them.
+.SH "SPEED INDICATOR"
+While posting, Newspost shows the approximate upload speed in bytes per 
+second.  This is measured by the total number of \fIencoded\fP bytes sent 
+to the server.  In Newspost 1.x, the speed indicator was based on the number 
+of \fIunencoded\fP bytes, so this speed indicator will show a higher number, 
+though the speed is the same.  If you are connecting to your news server via 
+a compressed link, you may see a difference in transfer rates when using 
+uuencoding vs. yencoding.
+.SH "FILES"
+.LP 
+\fI$HOME/.newspostrc\fP is an optional file used to store defaults. 
+Newspost will also read (but not write) the old\-style .newspost file if it 
+is present and .newspostrc is not.
+.SH "ENVIRONMENT VARIABLES"
+.LP 
+.TP 
+\fBHOME\fP
+Specifies your home directory.  Newspost will not work properly if this is
+not set.
+.TP 
+\fBNNTPSERVER\fP
+Specifies the hostname or IP address of your news server.
+.TP 
+\fBUSER\fP
+Used in creating the default from address if HOSTNAME is set.
+.TP 
+\fBHOSTNAME\fP
+Used in creating the default from address if USER is set.
+.TP 
+\fBTMPDIR\fP
+Specifies the directory used for creating temporary files.
+.TP 
+\fBTMP\fP
+Specifies the directory used for creating temporary files if TMPDIR is not
+set.
+.TP 
+\fBEDITOR\fP
+Specifies the text editor to use.
+.SH "EXAMPLES"
+.LP 
+.na
+.TP 
+\fBSave your news server, e\-mail address, and name as default:\fP
+.br 
+newspost \-d \-i news.myisp.com \-f newspost@sdf.lonestar.org \-F 'Jim Faulkner'
+.TP 
+\fBPost some files to alt.binaries.test:\fP
+.br 
+newspost \-n alt.binaries.test \-s 'Here are some songs' /nfs/music/*.mp3
+.TP 
+\fBA subject line from the above post may look like this:\fP
+.br 
+Here are some songs \- track01.mp3 (01/15)
+.TP 
+\fBPost some files to alt.binaries.test.yenc using yencoding:\fP
+.br 
+newspost \-y \-n alt.binaries.test.yenc \-s 'Here are some more songs'
+/nfs/music/*.mp3
+.TP 
+\fBA subject line from the above post may look like this:\fP
+.br 
+Here are some more songs \- "track01.mp3" yEnc (01/12)
+.TP 
+\fBInclude "File x of y" in the subject:\fP
+.br 
+newspost \-q \-y \-n alt.binaries.test.yenc \-s 'Here are some more songs'
+track01.mp3 track02.mp3 track03.mp3
+.TP 
+\fBA subject line from the above post may look like this:\fP
+.br 
+Here are some more songs \- File 1 of 3: "track01.mp3" yEnc (01/12)
+.TP 
+\fBMake yencode and "File x of y" the default:\fP
+.br 
+newspost \-d \-q \-y
+.TP 
+\fBAdd extra headers to every post by default:\fP
+.br 
+newspost \-d \-X 'X\-My\-Stupid\-Header\-1' \-X 'X\-My\-Stupid\-Header\-2'
+.TP 
+\fBClear extra headers and "File x of y", set uuencode, default:\fP
+.br 
+newspost \-d \-DX \-Dq \-Dy
+.TP 
+\fBGenerate and include an SFV file:\fP
+.br 
+newspost \-c checksum.sfv \-n alt.binaries.test \-s 'Here are some songs'
+/nfs/music/*.mp3
+.TP 
+\fBGenerate and include PAR files:\fP
+.br 
+newspost \-a parfile.par \-n alt.binaries.test \-s 'Here are some songs'
+/nfs/music/*.mp3
+.TP 
+\fBCreate a PAR volume for every 7 files posted by default:\fP
+.br 
+newspost \-d \-B 7
+.TP 
+\fBPost with 3 PAR volumes:\fP
+.br 
+newspost \-q \-a parfile.par \-A 3 \-n alt.binaries.test \-s 'Here are
+some songs' /nfs/music/*.mp3
+.TP 
+\fBA subject line from the above post may look like this:\fP
+.br 
+Here are some songs \- PAR File 1 of 4: parfile.par (1/1)
+.TP 
+\fBPost parts 3, 4, and 5 of track01.mp3 to alt.binaries.test:\fP
+.br 
+newspost \-n alt.binaries.test \-s 'Here are some songs' track01.mp3:3\-5
+.TP 
+\fBPost all of track01.mp3, parts of track02.mp3 and track03.mp3:\fP
+.br 
+newspost \-n alt.binaries.test \-s 'Here are some songs' track01.mp3
+track02.mp3:11+ track03.mp3:1,3,6\-8
+.TP 
+\fBResume a broken post at Track02.mp3 preserving -q numbering:\fP
+.br 
+newspost \-q \-s '2 songs' Track01.mp3:0 Track02.mp3
+.TP 
+\fBA subject line from the above post may look like this:\fP
+.br 
+2 songs \- File 2 of 2: Track02.mp3 (1/8)
+.TP 
+\fBPost an .SFV file and Track02.mp3, but include Track01.mp3 in the .SFV file:\fP
+.br 
+newspost \-c songs.SFV \-s '2 songs' Track01.mp3:0 Track01.mp3
+.ad
+.SH "AUTHORS"
+.LP 
+.ad
+Mostly written by Jim Faulkner <newspost@sdf.lonestar.org>, with some help from 
+William McBrine <wmcbrine@users.sf.net>. Portions borrowed from cksfv by 
+Bryan Call, and parchive by Willem Monsuwe.
+.SH "AVAILABILITY"
+The most recent version of newspost is available at
+http://newspost.unixcab.org/

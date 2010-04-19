@@ -1,0 +1,234 @@
+Dummies guide to Reed-Solomon coding.
+
+This text tries to explain all you need to know to implement Reed-Solomon
+coding for the purpose of adding one or more checksum files to a number of
+given files.
+
+
+1 - What can be done with it ?
+
+Let's say you have a set of N files you want to protect from damage.
+You can then create M checksum files.
+
+Suppose one or more of the files go missing.  You can take the remaining
+files, add checksum files so you have N files again, and then pass all of
+those through a routine that restores the missing files.
+
+The checksum files don't depend on each other, so any of them will do.
+You can even create more of them afterward.
+
+
+2 - How does it work, basically ?
+
+You're making checksum files, or restoring missing files, or even a mix of
+that.  Either way, you have N input files, and M output files.
+
+You only need two routines.  One routine calculates a set of 'multipliers'
+for each output file there's a list of 'multipliers', one per input file.
+The other routine reads in bytes from all the input files.  For each output
+file, those bytes are 'multiplied' , 'added' together, and written to the
+output file.  Nothing more to it.
+
+'Adding' and 'subtracting' are both actually a XOR operation.
+'Multiplying' is done with a separate function, that takes two bytes, does
+some lookups in tables, and returns one result byte.  You can look in
+appendix A for more details on this, but all you need to know that this way
+of multiplying behaves roughly as you would expect.
+
+The routine that calculates the multipliers is a bit more complicated.
+
+
+3 - How are the multipliers calculated ?
+
+First, we'll define a function F(i,j): F(i,j) = i^(j-1)
+That is, i to the power of (j-1), using the special 'multiplication'.
+You can easily do this with a 'power' function, which also takes two bytes,
+does some lookups and returns another byte.
+
+For calculating the checksum files, the multipliers are very simple.
+If you number the original files from 1 to N, and the checksum files from 1
+to M, then the multiplier from input file i to output file j is F(i,j)
+
+
+3.1 - Intermezzo
+
+This means that the first checksum file will just be all input files added
+together.  F(i,0) = i^0 = 1.  So recovering one file with the first checksum
+file is pretty easy: take the checksum file, and subtract the remaining
+files.
+
+Recovering one file with another checksum file is a bit more complicated,
+but should still be easy to understand: If you take the checksum file,
+subtract each remaining file multiplied by F(i,j), you'll be left with the
+missing file multiplied by its multiplier.  So if you divide the whole bunch
+by that multiplier, you'll get the missing file.
+
+If you want to recover more than one file, it gets more complicated.
+
+
+4 - Multipliers for recovering files
+
+If you know a bit of matrix calculus, this is easy.  You make a matrix.
+Each row corresponds to a file you have, each column corresponds to an
+original file.  On each row you put a single 1 if it's an original file (on
+the original file's column).  Otherwise you have a checksum file, and you
+put the row F(i,j) (where j is the number of the checksum file).
+
+If you look at the set of original files, and the set of files you have as
+vectors, then multiplying the originals by the matrix will get you the files
+you have.  So if you calculate the inverse of the matrix, using gaussian
+elimination, you can multiply that by the files you have, and get the
+original files back.
+
+Easy, if you know how gaussian elimination works.  If not, read on.
+
+
+4.1 - What is gaussian elimination ?
+
+For each file you want to recover, you make two arrays.  Both arrays are a
+series of multipliers.  The first array should be used on the original
+files, and the second array should be used on the files you have now.
+You fill in the first array with F(i,j), where j is the number of one of the
+checksum files you have.  The second array is filled with zeroes, with a
+single 1 on the position the checksum file is.
+
+This means that both arrays would result in creating the checksum file.
+Now, we want to transform those arrays so that the first array contains a
+single 1, on the position of a file we don't have.  We take care that each
+transformantion will be on both arrays, so they would still have the same
+result.
+
+To transform the arrays, you can do two things:
+- For each original file you have, you can put a 0 at its position in the
+  first array, and subtract the value that was there from the same position
+  in the second array.  In other words, you subtract the file, multiplied by
+  a factor, from both results.
+- You divide both arrays by a certain factor, so you get a 1 at the position
+  of a missing file.  Then you subtract both arrays, multiplied by a factor,
+  from another array so that you get a 0 at the position of the 1.
+
+After this is done, the first array has a single 1 at the position of a file
+we don't have, so the result of the first array would be that original file.
+So will the result of the second array.  We can then use the second array as
+multipliers for the input files.
+
+
+5 - An example
+
+Suppose you have five values: A, B, C, D, E
+You want to add three checksums to this: X, Y, Z
+
+So the equations become:
+
+1:  1*A +  1*B +  1*C +  1*D +  1*E = X
+2:  1*A +  2*B +  3*C +  4*D +  5*E = Y
+3:  1*A +  4*B +  9*C + 16*D + 25*E = Z
+
+Now, we're missing some values: B, C, D
+We make the following equations:
+
+1:  1*A +  1*B +  1*C +  1*D +  1*E =  0*A +  0*E  + 1*X  + 0*Y  + 0*Z
+2:  1*A +  2*B +  3*C +  4*D +  5*E =  0*A +  0*E  + 0*X  + 1*Y  + 0*Z
+3:  1*A +  4*B +  9*C + 16*D + 25*E =  0*A +  0*E  + 0*X  + 0*Y  + 1*Z
+
+First, we can subtract the A's and E's from both sides:
+
+1:  0*A +  1*B +  1*C +  1*D +  0*E = -1*A + -1*E +  1*X +  0*Y +  0*Z
+2:  0*A +  2*B +  3*C +  4*D +  0*E = -1*A + -5*E +  0*X +  1*Y +  0*Z
+3:  0*A +  4*B +  9*C + 16*D +  0*E = -1*A +-25*E +  0*X +  0*Y +  1*Z
+
+Then, we divide the first row by 1 (it remains the same)
+
+1:  0*A +  1*B +  1*C +  1*D +  0*E = -1*A + -1*E +  1*X +  0*Y +  0*Z
+
+And we subtract it from the other rows (multiplied by 2 and 4 respectively:
+
+2:  0*A +  0*B +  1*C +  2*D +  0*E =  1*A + -3*E + -2*X +  1*Y +  0*Z
+3:  0*A +  0*B +  5*C + 12*D +  0*E =  3*A +-21*E + -4*X +  0*Y +  1*Z
+
+Same goes for the second row (divide by 1, subtract multiplied by 1 and 5):
+
+2:  0*A +  0*B +  1*C +  2*D +  0*E =  1*A + -3*E + -2*X +  1*Y +  0*Z
+ 
+1:  0*A +  1*B +  0*C + -1*D +  0*E = -2*A +  2*E +  3*X + -1*Y +  0*Z
+3:  0*A +  0*B +  0*C +  2*D +  0*E = -2*A + -6*E +  6*X + -5*Y +  1*Z
+
+And for the third row (divide by 2, subtract multiplied by -1 and 2):
+
+3:  0*A +  0*B +  0*C +  1*D +  0*E = -1*A + -3*E +  3*X + -2.5*Y +  0.5*Z
+
+1:  0*A +  1*B +  0*C +  0*D +  0*E = -3*A + -1*E +  6*X + -3.5*Y +  0.5*Z
+2:  0*A +  0*B +  1*C +  0*D +  0*E =  3*A +  3*E + -8*X +  6  *Y + -1  *Z
+
+We can simplify this to:
+
+B = -3*A + -1*E +  6*X + -3.5*Y +  0.5*Z
+C =  3*A +  3*E + -8*X +  6  *Y + -1  *Z
+D = -1*A + -3*E +  3*X + -2.5*Y +  0.5*Z
+
+
+Appendix A - Galois Fields
+
+All through this document, we were doing calculations on bytes.  Because we
+don't want roundoff/cutoff errors and whatnot, we need to have a form of
+'calculation' that behaves like we would expect, but stays within the 0-255
+range.  This is called a Galois Field.
+
+Basically, adding and subtracting are both done by XORing two bytes:
+a '+' b = a '-' b = a XOR b
+
+Multiplying and dividing are done with tables.  We precalculate a table with
+exponents, with an accompanying reverse-lookup table:
+a '*' b = exp(log(a) + log(b))
+a '/' b = exp(log(a) - log(b))
+
+Exponentiating is also easy, using the same tables:
+a '^' b = exp(log(a) * b)
+
+The table wraps around after 255 bytes, (note: 255, not 256) and you also
+need to have special cases for a = 0 and b = 0, so the routines become:
+
+multiply(a, b) {
+	if (a == 0) return 0;
+	if (b == 0) return 0;
+	i = log[a] + log[b];
+	if (i > 255) i = i - 255;
+	return exp[i];
+}
+
+divide(a, b) {
+	if (a == 0) return 0;
+	if (b == 0) return 0;
+	i = log[a] - log[b];
+	if (i < 0) i = i + 255;
+	return exp[i];
+}
+
+power(a, b) {
+	if (a == 0) return 0;
+	i = log[a] * b;
+	while (i > 255) i = i - 255;
+	return exp[i];
+}
+
+Now, all we need is a routine to set up the exp and log tables.  This is
+rather complicated to explain, so here's the routine that does it:
+
+init() {
+	b = 1;
+	for (l = 0; l < 255; l++) {
+		exp[l] = b;
+		log[b] = l;
+		b += b;
+		if (b > 255) b ^= 285;
+	}
+	exp[255] = exp[0];
+}
+
+Basically, b is doubled each time, and if it gets too large, it's XORed
+with a 'magic' number.  The 'magic' number is chosen so that b will have
+all possible values.  If you really want to know, it's binary 100011101,
+which corresponds to x^8 + x^4 + x^3 + x^2 + 1.
+
+
+Willem.
