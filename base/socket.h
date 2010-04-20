@@ -4,11 +4,9 @@
 
 #include "newspost.h"
 
-extern int sockfd;
-
 int socket_create(const char *address, int port);
-void socket_close();
-long socket_getline(char *buffer);
-long socket_write(const char *buffer, long length);
+void socket_close(int sockfd);
+long socket_getline(int sockfd, char *buffer);
+long socket_write(int sockfd, const char *buffer, long length);
 
 #endif /* __SOCKET_H__ */

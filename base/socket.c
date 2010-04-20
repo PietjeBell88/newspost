@@ -28,8 +28,6 @@
 #include "socket.h"
 #include "../ui/ui.h"
 
-int sockfd;
-
 /**
 *** Public Routines
 **/
@@ -47,7 +45,7 @@ int socket_create(const char *address, int port) {
 defined(__SVR4) || defined(__svr4__))
 	unsigned long tinaddr;
 #endif
-	sockfd = -1;
+	int sockfd = -1;
 
 	memset ( &serv_addr, 0, sizeof(serv_addr) );
 	serv_addr.sin_family = AF_INET;
@@ -95,16 +93,16 @@ defined(__SVR4) || defined(__svr4__))
 	act.sa_flags = 0;
 	sigaction(SIGPIPE, &act, &oact);
 
-        return 0;
+        return sockfd;
 }
 
-void socket_close() {
+void socket_close(int sockfd) {
 	if (sockfd >= 0)
 		close(sockfd);
 }
 
 /* returns the number of bytes written */
-long socket_write(const char *buffer, long length) {
+long socket_write(int sockfd, const char *buffer, long length) {
 	long retval;
 
 	retval =  write(sockfd, buffer, length);
@@ -118,7 +116,7 @@ long socket_write(const char *buffer, long length) {
 }
 
 /* returns the number of bytes read */
-long socket_getline(char *buffer) {
+long socket_getline(int sockfd, char *buffer) {
 	long retval;
 	char *pi;
 	long i;

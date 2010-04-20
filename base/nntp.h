@@ -14,11 +14,11 @@
 #define NNTP_POSTING_FAILED "441"
 #define NNTP_DATE "111"
 
-boolean nntp_logon(newspost_data *data);
-void nntp_logoff();
-int nntp_issue_command(const char *command);
-int nntp_get_response(char *response);
-int nntp_post(const char *subject, newspost_data *data, 
+boolean nntp_logon(int sockfd, newspost_data *data);
+void nntp_logoff(int sockfd);
+int nntp_issue_command(int sockfd, const char *command);
+int nntp_get_response(int sockfd, char *response);
+int nntp_post(int sockfd, const char *subject, newspost_data *data,
 	      const char *buffer, long length,
 	      boolean no_ui_updates);
 

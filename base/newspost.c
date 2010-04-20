@@ -38,7 +38,7 @@ static SList *preprocess(newspost_data *data, SList *file_list);
 
 static Buff *read_text_file(Buff * text_buffer, const char *filename);
 
-static int post_file(newspost_data *data, file_entry *file_data,
+static int post_file(int sockfd, newspost_data *data, file_entry *file_data,
 	int filenumber, int number_of_files, const char *filestring,
 	char *data_buffer);
 
@@ -76,6 +76,7 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	int i;
 	file_entry *file_data = NULL;
 	int retval = NORMAL;
+	int sockfd = -1;
 	char *data_buffer = 
 		(char *) malloc(get_buffer_size_per_encoded_part(data));
 	Buff *subject = NULL;
@@ -83,7 +84,8 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 
 	/* create the socket */
 	ui_socket_connect_start(data->address->data);
-	retval = socket_create(data->address->data, data->port);
+	sockfd = socket_create(data->address->data, data->port);
+	retval = sockfd;
 	if (retval < 0)
 		return retval;
 
@@ -91,8 +93,8 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 
 	/* log on to the server */
 	ui_nntp_logon_start(data->address->data);
-	if (nntp_logon(data) == FALSE) {
-		socket_close();
+	if (nntp_logon(sockfd, data) == FALSE) {
+		socket_close(sockfd);
 		return LOGON_FAILED;
 	}
 	ui_nntp_logon_done();
@@ -102,7 +104,7 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 		/* post */
 		text_buffer = read_text_file(text_buffer, file_data->filename->data);
 		if(text_buffer != NULL)
-			retval = nntp_post(data->subject->data, data, text_buffer->data,
+			retval = nntp_post(sockfd, data->subject->data, data, text_buffer->data,
 					   text_buffer->length, TRUE);
 	}
 	else {
@@ -114,7 +116,7 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 			if (stat(data->sfv->data, &file_data->fileinfo) == -1)
 				ui_sfv_gen_error(data->sfv->data, errno);
 			else {
-				retval = post_file(data, file_data, 1, 1,
+				retval = post_file(sockfd, data, file_data, 1, 1,
 						   "SFV File", data_buffer);
 				if (retval < 0)
 					return retval;
@@ -139,7 +141,7 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 
 			text_buffer = read_text_file(text_buffer, data->prefix->data);
 			if (text_buffer != NULL) {
-				retval = nntp_post(subject->data, data, text_buffer->data, 
+				retval = nntp_post(sockfd, subject->data, data, text_buffer->data,
 						   text_buffer->length, TRUE);
 				if (retval == POSTING_NOT_ALLOWED)
 					return retval;
@@ -164,7 +166,7 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 
 			file_data = (file_entry *) file_list->data;
 
-			retval = post_file(data, file_data, i, number_of_files,
+			retval = post_file(sockfd, data, file_data, i, number_of_files,
 					   "File", data_buffer);
 			if (retval < 0)
 				return retval;
@@ -181,7 +183,7 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 
 			file_data = (file_entry *) file_list->data;
 
-			retval = post_file(data, file_data, i, number_of_files,
+			retval = post_file(sockfd, data, file_data, i, number_of_files,
 					   "PAR File", data_buffer);
 			if (retval < 0)
 				return retval;
@@ -195,8 +197,8 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 		slist_free(parfiles);
 	}
 
-	nntp_logoff();
-	socket_close();
+	nntp_logoff(sockfd);
+	socket_close(sockfd);
 	
 	free(data_buffer);
 	buff_free(text_buffer);
@@ -204,7 +206,7 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	return retval;
 }
 
-static int post_file(newspost_data *data, file_entry *file_data, 
+static int post_file(int sockfd, newspost_data *data, file_entry *file_data,
 	  int filenumber, int number_of_files,
 	  const char *filestring, char *data_buffer) {
 	long number_of_bytes;
@@ -242,7 +244,7 @@ static int post_file(newspost_data *data, file_entry *file_data,
 		ui_posting_part_start(file_data, j, number_of_parts,
 				      number_of_bytes);
 
-		retval = nntp_post(subject->data, data, data_buffer,
+		retval = nntp_post(sockfd, subject->data, data, data_buffer,
 				   number_of_bytes, FALSE);
 
 		if (retval == NORMAL) {
@@ -262,8 +264,8 @@ static int post_file(newspost_data *data, file_entry *file_data,
 			else {
 				total_failures++;
 				if (total_failures == 5) {
-					nntp_logoff();
-					socket_close();
+					nntp_logoff(sockfd);
+					socket_close(sockfd);
 					ui_too_many_failures();
 				}
 			}
