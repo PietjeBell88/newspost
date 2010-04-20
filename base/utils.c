@@ -43,7 +43,7 @@ file_entry * file_entry_free(file_entry *fe){
 	return NULL;
 }
 
-Buff * getline(Buff *buff, FILE *file){
+Buff * buff_getline(Buff *buff, FILE *file){
 	char c = fgetc(file);
 	buff = buff_free(buff);
 	while(TRUE){

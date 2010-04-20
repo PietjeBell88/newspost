@@ -342,7 +342,7 @@ static Buff *read_text_file(Buff *text_buffer, const char *filename) {
 	file = fopen(filename, "r");
 	if (file != NULL) {
 		while (!feof(file)) {
-			line = getline(line, file);
+			line = buff_getline(line, file);
 			if(line == NULL){
 				text_buffer = buff_add(text_buffer, "\r\n");
 				continue;
