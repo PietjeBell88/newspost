@@ -32,49 +32,55 @@
 *** Public Routines
 **/
 
-long yencode(FILE *infile, char *outbuf, int maxlines, n_uint32 *crc)
+long yencode(FILE *infile, char *outbuf, long psize, n_uint32 *crc)
 {
-	int counter = 0;
+	long counter;
 	int n, ylinepos;
 	unsigned char *p, *ch, c;
-	unsigned char inbuf[80];
-	
+	unsigned char inbuf[YENC_LINE_LENGTH];
+
 	ylinepos = 0;
+	n = 0;
+	counter = 0;
+
 	ch = (unsigned char *) outbuf;
-	
-	while (counter < maxlines) {
-		counter++;
-		n = fread(inbuf, 1, 45, infile);
 
-		if (n == 0)
-			break;
+	while (counter < psize) {
 
-		*crc = crc32((char *) inbuf, n, *crc);
+		if (n == 0) {
+			n = fread(inbuf, 1, YENC_LINE_LENGTH, infile);
+			p = inbuf;
+			*crc = crc32((char *) inbuf, n, *crc);
+		}
 
-		for (p = inbuf; n > 0; n--, p++) {
-			if (ylinepos >= YENC_LINE_LENGTH) {
-				*ch++ = '\r';
-				*ch++ = '\n';
-				ylinepos = 0;
-			}
+		if (ylinepos >= YENC_LINE_LENGTH) {
+			*ch++ = '\r';
+			*ch++ = '\n';
+			ylinepos = 0;
+		}
 
-			c = *p + 42;
-			switch (c) {
-			case '.':
-				if (ylinepos > 0)
-					break;
-			case '\0':
-			case 9:
-			case '\n':
-			case '\r':
-			case '=':
-				*ch++ = '=';
-				c += 64;
-				ylinepos++;
-			}
-			*ch++ = c;
+		c = *p + 42;
+
+		switch (c) {
+		case '.':
+			if (ylinepos > 0)
+				break;
+		case '\0':
+		case 9:
+		case '\n':
+		case '\r':
+		case '=':
+			*ch++ = '=';
+			c += 64;
 			ylinepos++;
 		}
+
+		*ch++ = c;
+
+		counter++;
+		ylinepos++;
+		n--;
+		p++;
 	}
 
 	*ch++ = '\r';

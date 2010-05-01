@@ -4,6 +4,6 @@
 
 #define YENC_LINE_LENGTH 128
 
-long yencode(FILE *infile, char *outbuf, int maxlines, n_uint32 *crc);
+long yencode(FILE *infile, char *outbuf, long psize, n_uint32 *crc);
 
 #endif /* __YENCODE_H__ */

@@ -106,7 +106,7 @@ long get_encoded_part (newspost_data *data, file_entry *file,
 		}
 
 		/* The core */
-		pi += yencode(fp, pi, data->lines, &crc);
+		pi += yencode(fp, pi, psize, &crc);
 
 		/* The last line */
 		if (total_parts == 1)
