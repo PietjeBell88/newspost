@@ -44,6 +44,7 @@ long yencode(FILE *infile, char *outbuf, long psize, n_uint32 *crc)
 	counter = 0;
 
 	ch = (unsigned char *) outbuf;
+	p = inbuf;
 
 	while (counter < psize) {
 
