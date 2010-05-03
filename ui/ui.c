@@ -19,6 +19,7 @@
  * 
  */
 
+#include <pthread.h>
 #include "ui.h"
 #include "errors.h"
 #include "../base/encode.h"
@@ -232,28 +233,40 @@ void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles) {
 
 void ui_socket_connect_start(const char *servername) {
 	if (verbosity == TRUE) {
-		printf("\nConnecting to %s...", servername);
+		printf("\n(Thread %d) Connecting to %s...", *((int *) pthread_getspecific(key_thread_id)), servername);
+		fflush(stdout);
+	}
+}
+
+void ui_socket_connect_failed(int retval) {
+	if (verbosity == TRUE) {
+		if (retval == FAILED_TO_RESOLVE_HOST)
+			printf("\n(Thread %d) Connecting failed: \"Failed to resolve host\", retrying in 120 seconds...", *((int *) pthread_getspecific(key_thread_id)));
+		else if (retval == FAILED_TO_CREATE_SOCKET)
+			printf("\n(Thread %d) Connecting failed: \"Failed to create socket\", retrying in 120 seconds...", *((int *) pthread_getspecific(key_thread_id)));
+		else
+			printf("\n(Thread %d) Connecting failed: \"Unknown error\", retrying in 120 seconds...", *((int *) pthread_getspecific(key_thread_id)));
 		fflush(stdout);
 	}
 }
 
 void ui_socket_connect_done() {
 	if (verbosity == TRUE) {
-		printf(" done.");
+		printf("\n(Thread %d) Connecting done.", *((int *) pthread_getspecific(key_thread_id)));
 		fflush(stdout);
 	}
 }
 
 void ui_nntp_logon_start(const char *servername) {
 	if (verbosity == TRUE) {
-		printf("\nLogging on to %s...", servername);
+		printf("\n(Thread %d) Logging on to %s...", *((int *) pthread_getspecific(key_thread_id)), servername);
 		fflush(stdout);
 	}
 }
 
 void ui_nntp_logon_done() {
 	if (verbosity == TRUE) {
-		printf(" done.\n");
+		printf("\n(Thread %d) Logon done.\n", *((int *) pthread_getspecific(key_thread_id)));
 		fflush(stdout);
 	}
 }
@@ -261,31 +274,27 @@ void ui_nntp_logon_done() {
 /* only called when we get 502: authentication rejected */
 void ui_nntp_authentication_failed(const char *response) {
 	fprintf(stderr,
-		"\nERROR: NNTP authentication failed: %s", response);
+		"\n(Thread %d) ERROR: NNTP authentication failed: %s", *((int *) pthread_getspecific(key_thread_id)), response);
 }
 
 
 /* called with EVERY command */
 void ui_nntp_command_issued(const char *command) {
-	/*
-	printf("\ncommand: %s", command);
+	printf("\n(Thread %d) command: %s", *((int *) pthread_getspecific(key_thread_id)), command);
 	fflush(stdout);
-	*/
 }
 
 /* called with EVERY response */
 void ui_nntp_server_response(const char *response) {
-	/*
-	printf("\nresponse: %s", response);
+	printf("\n(Thread %d) response: %s", *((int *) pthread_getspecific(key_thread_id)), response);
 	fflush(stdout);
-	*/
 }
 
 
 /* called when we get an unexpected response */
 void ui_nntp_unknown_response(const char *response) {
 	fprintf(stderr,
-		"\nWARNING: unexpected server response: %s", response);
+		"\n(Thread %d) WARNING: unexpected server response: %s", *((int *) pthread_getspecific(key_thread_id)), response);
 }
 
 int ui_chunk_posted(long chunksize, long bytes_written) {
@@ -309,11 +318,11 @@ int ui_chunk_posted(long chunksize, long bytes_written) {
 				percent_done = 100;
 		}
 
-		printf("\rPosting part %i of %i - %i%% ",
-			this_partnum, this_totalparts, percent_done);
+		printf("\n(Thread %d) Posting part %i of %i - %i%% ",
+			*((int *) pthread_getspecific(key_thread_id)), this_partnum, this_totalparts, percent_done);
 	}
 	else
-		printf("\rPosting part %i ", this_partnum);
+		printf("\n(Thread %d) Posting part %i ", *((int *) pthread_getspecific(key_thread_id)), this_partnum);
 
 	bytes_written += total_bytes_posted;
 	if (bytes_written > 50000) {
@@ -388,7 +397,7 @@ void ui_posting_file_start(newspost_data *data, file_entry *filedata,
 			   int number_of_parts, long bytes_in_first_part) {
 	Buff *tmpbuff = NULL;		   
 
-	printf("\r%s - %s (%i part%s",
+	printf("\n%s - %s (%i part%s",
 	       n_basename(filedata->filename->data),
 	       byte_print(filedata->fileinfo.st_size),
 	       number_of_parts,
@@ -503,7 +512,6 @@ void ui_generic_error(int error) {
 void ui_too_many_failures() {
 	fprintf(stderr, "\nToo many failures."
 			"\nGiving up.\n");
-	exit(EXIT_POSTING_FAILED);
 }
 
 void ui_socket_error(int error){

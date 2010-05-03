@@ -58,6 +58,7 @@ int main(int argc, char **argv) {
 	main_data.port = 119;
 	main_data.user = NULL;
 	main_data.password = NULL;
+	main_data.threads = 1;
 	main_data.lines = 7500;
 	main_data.yenc = FALSE;
 	main_data.sfv = NULL;

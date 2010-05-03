@@ -24,6 +24,7 @@ typedef long long               n_int64; /* 8 byte signed integer */
 /* END OF CONFIGURABLE DEFINITIONS */
 /***********************************/
 
+#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdio.h>
@@ -40,7 +41,7 @@ typedef n_uint8                 boolean;
 #include "utils.h"
 
 /* remember to change VERSION and PAR_CLIENT for new version numbers */
-#define VERSION "2.1.1"
+#define VERSION "2.2.1"
 #define PAR_CLIENT 0xFE020101
 
 #define NEWSPOSTURL "http://newspost.unixcab.org/"
@@ -57,6 +58,8 @@ typedef n_uint8                 boolean;
 #define POSTING_NOT_ALLOWED -5
 #define POSTING_FAILED -6
 
+extern pthread_key_t key_thread_id;
+
 typedef struct {
 	Buff * subject;
 	Buff * newsgroup;
@@ -66,6 +69,7 @@ typedef struct {
 	int port;
 	Buff * user;
 	Buff * password;
+	int threads;
 	int lines;			/* lines per message */
 	boolean yenc;
 	Buff * sfv;	/* filename for generated sfv file */

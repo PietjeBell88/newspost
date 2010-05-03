@@ -28,6 +28,7 @@ void ui_par_volume_created(const char *filename);
 void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles);
 
 void ui_socket_connect_start(const char *servername);
+void ui_socket_connect_failed(int retval);
 void ui_socket_connect_done();
 
 void ui_nntp_logon_start(const char *servername);
