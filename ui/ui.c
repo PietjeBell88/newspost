@@ -146,13 +146,6 @@ void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles) {
 
 	/* what are we posting? */
 
-	if ((data->prefix != NULL) && (data->text == FALSE)) {
-		if (stat(data->prefix->data, &statbuf) == 0) {
-			printf("\n1 Text Prefix: %s",
-				byte_print(statbuf.st_size));
-		}
-	}
-
 	i = 0;
 	listptr = file_list;
 	while (listptr != NULL) {
@@ -293,24 +286,6 @@ void ui_nntp_server_response(const char *response) {
 void ui_nntp_unknown_response(const char *response) {
 	fprintf(stderr,
 		"\nWARNING: unexpected server response: %s", response);
-}
-
-void ui_posting_prefix_start(const char *filename) {
-	printf("\rPosting %s as text...", n_basename(filename));
-	fflush(stdout);
-}
-
-void ui_posting_prefix_done() {
-	files_posted++;
-	printf(" done.\n");
-	fflush(stdout);
-}
-
-/* when the prefix does not get posted
-   i.e. is the prefix a text file? */
-void ui_posting_prefix_failed() {
-	fprintf(stderr,
-		"\nWARNING: Posting failed. Is it really a text file?");
 }
 
 int ui_chunk_posted(long chunksize, long bytes_written) {

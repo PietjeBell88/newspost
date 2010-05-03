@@ -10,7 +10,6 @@ extern int optind, opterr, optopt;
 extern int errno;
 
 extern boolean writedefaults;
-extern boolean temporary_prefix;
 extern const char *EDITOR;
 
 /* public */

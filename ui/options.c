@@ -36,9 +36,6 @@
 #define user_option 'u'
 #define password_option 'p'
 #define lines_option 'l'
-#define prefix_option 'e'
-#define alternate_prefix_option '0'
-#define edit_prefix_option 'E'
 #define yenc_option 'y'
 #define sfv_option 'c'
 #define par_option 'a'
@@ -72,8 +69,6 @@ static const char valid_flags[] = {
 	user_option, ':',
 	password_option, ':',
 	lines_option, ':',
-	prefix_option, ':',
-	alternate_prefix_option, ':',
 	yenc_option,
 	sfv_option, ':',
 	par_option, ':',
@@ -89,7 +84,6 @@ static const char valid_flags[] = {
 	replyto_option, ':',
 	tmpdir_option, ':',
 	disable_option, ':',
-	edit_prefix_option,
 	filesperpar_option, ':',
 	name_option, ':',
 	extraheader_option,':',
@@ -614,11 +608,6 @@ int parse_options(int argc, char **argv, newspost_data *data) {
 				data->lines = atoi(optarg);
 				break;
 
-			case alternate_prefix_option:
-			case prefix_option:
-				data->prefix = buff_create(data->prefix, "%s", optarg);
-				break;
-
 			case yenc_option:
 				data->yenc = TRUE;
 				break;
@@ -679,10 +668,6 @@ int parse_options(int argc, char **argv, newspost_data *data) {
 
 			case tmpdir_option:
 				data->tmpdir = buff_create(data->tmpdir, "%s", optarg);
-				break;
-
-			case edit_prefix_option:
-				temporary_prefix = TRUE;
 				break;
 
 			case name_option:
@@ -801,7 +786,6 @@ int parse_options(int argc, char **argv, newspost_data *data) {
 }
 
 void check_options(newspost_data *data) {
-	FILE *testfile;
 	boolean goterror = FALSE;
 	
 	if (data->newsgroup == NULL) {
@@ -875,17 +859,6 @@ void check_options(newspost_data *data) {
 				" 5000 to 10000 lines");
 		}
 	}
-	if (data->prefix != NULL) {
-		testfile = fopen(data->prefix->data, "rb");
-		if (testfile == NULL) {
-			fprintf(stderr,
-				"\nWARNING: %s %s -  NO PREFIX WILL BE POSTED",
-				strerror(errno), data->prefix->data);
-			data->prefix = buff_free(data->prefix);
-		}
-		else
-			fclose(testfile);
-	}
 	if (goterror == TRUE)
 		exit(EXIT_BAD_HEADER_LINE);
 }
@@ -916,9 +889,6 @@ void print_help() {
 	printf("\n  -%c     - include \"File x of y\" in subject line",
 		filenumber_option);
 	printf("\n  -%c     - yencode instead of uuencode", yenc_option);
-	printf("\n  -%c ARG - text prefix", prefix_option);
-	printf("\n  -%c     - write text prefix in text editor set by $EDITOR",
-		edit_prefix_option);
 	printf("\n  -%c ARG - generate SFV file", sfv_option);
 	printf("\n  -%c ARG - generate PAR files",par_option);
 	printf("\n  -%c ARG - number of PAR volumes to create", parnum_option);

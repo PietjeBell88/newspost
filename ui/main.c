@@ -27,7 +27,6 @@
 #include "ui.h"
 
 boolean writedefaults = FALSE;
-boolean temporary_prefix = FALSE;
 
 const char *EDITOR = NULL;
 
@@ -60,7 +59,6 @@ int main(int argc, char **argv) {
 	main_data.user = NULL;
 	main_data.password = NULL;
 	main_data.lines = 7500;
-	main_data.prefix = NULL;
 	main_data.yenc = FALSE;
 	main_data.sfv = NULL;
 	main_data.par = NULL;
@@ -133,7 +131,6 @@ int main(int argc, char **argv) {
 	/* only create it if we need it */
 	if ((main_data.sfv != NULL)
 	   || (main_data.par != NULL)
-	   || (temporary_prefix == TRUE)
 	   || ((main_data.text == TRUE) && (file_list == NULL)) ) {
 		if (main_data.tmpdir == NULL)
 			main_data.tmpdir = buff_create(main_data.tmpdir, "%s", P_tmpdir);
@@ -195,32 +192,6 @@ int main(int argc, char **argv) {
 					exit(EXIT_NO_FILES);
 				}
 			}
-			else if ((temporary_prefix == TRUE) &&
-				 (retval == NORMAL) &&
-				 (main_data.text == FALSE)) {
-				main_data.prefix = buff_create(main_data.prefix,
-					 "%s/prefix", main_data.tmpdir->data);
-
-				command = buff_create(command, "%s %s",
-					 (EDITOR != NULL) ? EDITOR : "vi",
-					 main_data.prefix->data);
-				system(command->data);
-				
-				fp = fopen(main_data.prefix->data, "rb");
-
-				if (fp != NULL) {
-					fclose(fp);
-					chmod(main_data.prefix->data,
-						S_IRUSR|S_IWUSR);
-				}
-				else {
-					fprintf(stderr,
-						"\nWARNING: Cannot open"
-						" prefix: %s - SKIPPING",
-						strerror(errno));
-					main_data.prefix = buff_free(main_data.prefix);
-				}
-			}
 		}
 	}
 	/* post */
@@ -247,14 +218,11 @@ int main(int argc, char **argv) {
 		buff_free(pi->data);
 		pi = slist_next(pi);		
 	}
-	if ((TRUE == temporary_prefix) && (main_data.text == FALSE))
-		unlink(main_data.prefix->data);
 
 	/* if we forgot to remove a file in tmpdir, force its removal */
 	if ((main_data.sfv != NULL)
 	   || (main_data.par != NULL)
-	   || (temporary_prefix == TRUE)
-	   || (temporary_message == TRUE)) {	
+	   || (temporary_message == TRUE)) {
 		if (rmdir(main_data.tmpdir->data) == -1) {
 			command = buff_create(command,
 				 "rm -rf %s", main_data.tmpdir->data);
@@ -271,7 +239,6 @@ int main(int argc, char **argv) {
 	buff_free(main_data.address);
 	buff_free(main_data.user);
 	buff_free(main_data.password);
-	buff_free(main_data.prefix);
 	buff_free(main_data.sfv);
 	buff_free(main_data.par);
 	buff_free(main_data.reference);

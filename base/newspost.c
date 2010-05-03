@@ -113,7 +113,6 @@ static int post_text_file(newspost_data *data, SList *file_list) {
 
 static int encode_and_post(newspost_data *data, SList *file_list,
 			    SList *parfiles) {
-	int number_of_parts;
 	int number_of_files;
 	int i;
 	file_entry *file_data = NULL;
@@ -121,8 +120,6 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	int sockfd = -1;
 	char *data_buffer = 
 		(char *) malloc(get_buffer_size_per_encoded_part(data));
-	Buff *subject = NULL;
-	Buff *text_buffer = NULL;
 
 	/* create the socket */
 	ui_socket_connect_start(data->address->data);
@@ -160,38 +157,6 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	}
 
 	number_of_files = slist_length(file_list);
-
-	/* if there's a prefix, post that */
-	if (data->prefix != NULL) {
-		ui_posting_prefix_start(data->prefix->data);
-
-		file_data = (file_entry *) file_list->data;
-		number_of_parts =
-			get_number_of_encoded_parts(data, file_data);
-		subject = make_subject(subject, data, 1 , number_of_files,
-				file_data->filename->data, 0 , number_of_parts,
-				"File");
-
-		text_buffer = read_text_file(text_buffer, data->prefix->data);
-		if (text_buffer != NULL) {
-			retval = nntp_post(sockfd, subject->data, data, text_buffer->data,
-						text_buffer->length, TRUE);
-			if (retval == POSTING_NOT_ALLOWED)
-				return retval;
-			else if (retval == POSTING_FAILED) {
-				/* dont bother retrying...
-					who knows what's in that file */
-				ui_posting_prefix_failed();
-				retval = NORMAL;
-			}
-			else if (retval == NORMAL)
-				ui_posting_prefix_done();
-		}
-		else
-			ui_posting_prefix_failed();
-
-		buff_free(subject);
-	}
 
 	/* post the files */
 	i = 1;
@@ -233,7 +198,6 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	socket_close(sockfd);
 	
 	free(data_buffer);
-	buff_free(text_buffer);
 
 	return retval;
 }

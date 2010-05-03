@@ -37,10 +37,7 @@ void ui_nntp_command_issued(const char *command);
 void ui_nntp_server_response(const char *response);
 void ui_nntp_unknown_response(const char *response);
 
-void ui_posting_prefix_start(const char *filename);
-void ui_posting_prefix_done();
-void ui_posting_prefix_failed();
-void ui_posting_file_start(newspost_data *data, file_entry *filedata, 
+void ui_posting_file_start(newspost_data *data, file_entry *filedata,
 			   int number_of_parts, long bytes_in_first_part);
 void ui_posting_file_done();
 
