@@ -31,6 +31,8 @@
 *** Private Declarations
 **/
 
+static int post_text_file(newspost_data *data, SList *file_list);
+
 static int encode_and_post(newspost_data *data, SList *file_list,
 			    SList *parfiles);
 
@@ -55,11 +57,16 @@ int newspost(newspost_data *data, SList *file_list) {
 	SList *parfiles = NULL;
 
 	/* preprocess */
-	parfiles = preprocess(data, file_list);
+	if (data->text == FALSE)
+		parfiles = preprocess(data, file_list);
 
 	/* and post! */
 	ui_post_start(data, file_list, parfiles);
-	retval = encode_and_post(data, file_list, parfiles);
+
+	if (data->text == TRUE)
+		retval = post_text_file(data, file_list);
+	else
+		retval = encode_and_post(data, file_list, parfiles);
 
 	return retval;
 }
@@ -68,6 +75,41 @@ int newspost(newspost_data *data, SList *file_list) {
 /**
 *** Private Routines
 **/
+
+static int post_text_file(newspost_data *data, SList *file_list) {
+	file_entry *file_data = NULL;
+	int retval = NORMAL;
+	int sockfd = -1;
+	Buff *text_buffer = NULL;
+
+	/* create the socket */
+	ui_socket_connect_start(data->address->data);
+	sockfd = socket_create(data->address->data, data->port);
+	retval = sockfd;
+	if (retval < 0)
+		return retval;
+
+	ui_socket_connect_done();
+
+	/* log on to the server */
+	ui_nntp_logon_start(data->address->data);
+	if (nntp_logon(sockfd, data) == FALSE) {
+		socket_close(sockfd);
+		return LOGON_FAILED;
+	}
+	ui_nntp_logon_done();
+
+	file_data = file_list->data;
+	/* post */
+	text_buffer = read_text_file(text_buffer, file_data->filename->data);
+	if(text_buffer != NULL)
+		retval = nntp_post(sockfd, data->subject->data, data, text_buffer->data,
+					text_buffer->length, TRUE);
+
+	buff_free(text_buffer);
+
+	return retval;
+}
 
 static int encode_and_post(newspost_data *data, SList *file_list,
 			    SList *parfiles) {
@@ -99,103 +141,93 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	}
 	ui_nntp_logon_done();
 
-	if (data->text == TRUE) {
-		file_data = file_list->data;
-		/* post */
-		text_buffer = read_text_file(text_buffer, file_data->filename->data);
-		if(text_buffer != NULL)
-			retval = nntp_post(sockfd, data->subject->data, data, text_buffer->data,
-					   text_buffer->length, TRUE);
-	}
-	else {
-		/* post any sfv files... */
-		if (data->sfv != NULL) {
-			file_data = file_entry_alloc(file_data);
-			file_data->filename = 
-				buff_create(file_data->filename, "%s", data->sfv->data);
-			if (stat(data->sfv->data, &file_data->fileinfo) == -1)
-				ui_sfv_gen_error(data->sfv->data, errno);
-			else {
-				retval = post_file(sockfd, data, file_data, 1, 1,
-						   "SFV File", data_buffer);
-				if (retval < 0)
-					return retval;
+	/* post any sfv files... */
+	if (data->sfv != NULL) {
+		file_data = file_entry_alloc(file_data);
+		file_data->filename =
+			buff_create(file_data->filename, "%s", data->sfv->data);
+		if (stat(data->sfv->data, &file_data->fileinfo) == -1)
+			ui_sfv_gen_error(data->sfv->data, errno);
+		else {
+			retval = post_file(sockfd, data, file_data, 1, 1,
+						"SFV File", data_buffer);
+			if (retval < 0)
+				return retval;
 
-				unlink(data->sfv->data);
-			}
-			free(file_data);
+			unlink(data->sfv->data);
 		}
+		free(file_data);
+	}
 
-		number_of_files = slist_length(file_list);
+	number_of_files = slist_length(file_list);
 
-		/* if there's a prefix, post that */
-		if (data->prefix != NULL) {
-			ui_posting_prefix_start(data->prefix->data);
+	/* if there's a prefix, post that */
+	if (data->prefix != NULL) {
+		ui_posting_prefix_start(data->prefix->data);
 
-			file_data = (file_entry *) file_list->data;
-			number_of_parts = 
-				get_number_of_encoded_parts(data, file_data);
-			subject = make_subject(subject, data, 1 , number_of_files,
-				     file_data->filename->data, 0 , number_of_parts,
-				     "File");
+		file_data = (file_entry *) file_list->data;
+		number_of_parts =
+			get_number_of_encoded_parts(data, file_data);
+		subject = make_subject(subject, data, 1 , number_of_files,
+				file_data->filename->data, 0 , number_of_parts,
+				"File");
 
-			text_buffer = read_text_file(text_buffer, data->prefix->data);
-			if (text_buffer != NULL) {
-				retval = nntp_post(sockfd, subject->data, data, text_buffer->data,
-						   text_buffer->length, TRUE);
-				if (retval == POSTING_NOT_ALLOWED)
-					return retval;
-				else if (retval == POSTING_FAILED) {
-					/* dont bother retrying...
-					   who knows what's in that file */
-					ui_posting_prefix_failed();
-					retval = NORMAL;
-				}
-				else if (retval == NORMAL)
-					ui_posting_prefix_done();
-			}
-			else
+		text_buffer = read_text_file(text_buffer, data->prefix->data);
+		if (text_buffer != NULL) {
+			retval = nntp_post(sockfd, subject->data, data, text_buffer->data,
+						text_buffer->length, TRUE);
+			if (retval == POSTING_NOT_ALLOWED)
+				return retval;
+			else if (retval == POSTING_FAILED) {
+				/* dont bother retrying...
+					who knows what's in that file */
 				ui_posting_prefix_failed();
-
-			buff_free(subject);
+				retval = NORMAL;
+			}
+			else if (retval == NORMAL)
+				ui_posting_prefix_done();
 		}
-	
-		/* post the files */
-		i = 1;
-		while (file_list != NULL) {
+		else
+			ui_posting_prefix_failed();
 
-			file_data = (file_entry *) file_list->data;
-
-			retval = post_file(sockfd, data, file_data, i, number_of_files,
-					   "File", data_buffer);
-			if (retval < 0)
-				return retval;
-
-			i++;
-			file_list = slist_next(file_list);
-		}
-
-		/* post any par files */
-		i = 1;
-		file_list = parfiles;
-		number_of_files = slist_length(parfiles);
-		while (file_list != NULL) {
-
-			file_data = (file_entry *) file_list->data;
-
-			retval = post_file(sockfd, data, file_data, i, number_of_files,
-					   "PAR File", data_buffer);
-			if (retval < 0)
-				return retval;
-
-			unlink(file_data->filename->data);
-			buff_free(file_data->filename);
-			free(file_data);
-			i++;
-			file_list = slist_next(file_list);
-		}
-		slist_free(parfiles);
+		buff_free(subject);
 	}
+
+	/* post the files */
+	i = 1;
+	while (file_list != NULL) {
+
+		file_data = (file_entry *) file_list->data;
+
+		retval = post_file(sockfd, data, file_data, i, number_of_files,
+					"File", data_buffer);
+		if (retval < 0)
+			return retval;
+
+		i++;
+		file_list = slist_next(file_list);
+	}
+
+	/* post any par files */
+	i = 1;
+	file_list = parfiles;
+	number_of_files = slist_length(parfiles);
+	while (file_list != NULL) {
+
+		file_data = (file_entry *) file_list->data;
+
+		retval = post_file(sockfd, data, file_data, i, number_of_files,
+					"PAR File", data_buffer);
+		if (retval < 0)
+			return retval;
+
+		unlink(file_data->filename->data);
+		buff_free(file_data->filename);
+		free(file_data);
+		i++;
+		file_list = slist_next(file_list);
+	}
+	slist_free(parfiles);
 
 	nntp_logoff(sockfd);
 	socket_close(sockfd);
@@ -315,21 +347,19 @@ static SList *preprocess(newspost_data *data, SList *file_list) {
 		buff_free(tmpstring);
 	}
 
-	if (data->text == FALSE) {
-		/* calculate CRCs if needed; generate any sfv files */
-		if ((data->yenc == TRUE) || (data->sfv != NULL)) {
-			calculate_crcs(file_list);
-			
-			if (data->sfv != NULL)
-				newsfv(file_list, data);
-		}
-		
-		/* generate any par files */
-		if (data->par != NULL) {
-			parfiles = par_newspost_interface(data, file_list);
-			if (data->yenc == TRUE)
-				calculate_crcs(parfiles);
-		}
+	/* calculate CRCs if needed; generate any sfv files */
+	if ((data->yenc == TRUE) || (data->sfv != NULL)) {
+		calculate_crcs(file_list);
+
+		if (data->sfv != NULL)
+			newsfv(file_list, data);
+	}
+
+	/* generate any par files */
+	if (data->par != NULL) {
+		parfiles = par_newspost_interface(data, file_list);
+		if (data->yenc == TRUE)
+			calculate_crcs(parfiles);
 	}
 
 	return parfiles;
