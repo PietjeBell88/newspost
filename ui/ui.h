@@ -4,10 +4,13 @@
 
 #include <time.h>
 #include "../base/newspost.h"
+#include "../base/postthread.h"
 
 extern time_t post_delay;
 extern boolean verbosity;
 extern Buff * tmpdir_ptr;
+
+extern pthread_mutex_t *progress_lock;
 
 void ui_tmpdir_create_failed(const char *dirname, int error);
 
@@ -60,5 +63,7 @@ void ui_generic_error(int error);
 void ui_too_many_failures();
 
 void ui_socket_error(int error);
+
+void rate_print(int sleepytime);
 
 #endif /* __UI_H__ */

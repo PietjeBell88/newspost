@@ -24,14 +24,14 @@
 
 #include <pthread.h>
 
-queue *queue_init(newspost_data *data) {
+queue *queue_init(int length) {
 	queue *q;
 	int i;
 
 	q = (queue *)malloc (sizeof (queue));
 	if (q == NULL) return (NULL);
 
-	q->length = data->threads * 2;
+	q->length = length;
 	
 	q->article_list = (post_article_t *) malloc(q->length * sizeof(post_article_t));
 

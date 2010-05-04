@@ -3,7 +3,7 @@
 #define __NEWSPOST_QUEUE_H__
 
 #include <pthread.h>
-#include "newspost.h"
+#include "utils.h"
 
 #define QUEUE_PRODUCER_DONE -1
 
@@ -12,7 +12,6 @@ typedef struct {
 	int partnumber;
 	Buff *subject;
 } post_article_t;
-
 
 typedef struct {
 	post_article_t *article_list;
@@ -24,7 +23,7 @@ typedef struct {
 	pthread_cond_t *notFull, *notEmpty;
 } queue;
 
-queue *queue_init(newspost_data *data);
+queue *queue_init(int length);
 void queue_delete(queue *q);
 void queue_item_add(queue *q, post_article_t *in);
 int queue_item_del(queue *q, post_article_t *out);

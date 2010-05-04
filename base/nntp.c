@@ -101,7 +101,6 @@ int nntp_post(int sockfd, const char *subject, newspost_data *data,
 	buff = buff_add(buff, "From: %s\r\n", data->from->data);
 	buff = buff_add(buff, "Newsgroups: %s\r\n", data->newsgroup->data);
 	buff = buff_add(buff, "Subject: %s\r\n", subject);
-	printf("\n%s", subject);
 	buff = buff_add(buff, "User-Agent: %s\r\n", USER_AGENT);
 
 	if (data->replyto != NULL) {

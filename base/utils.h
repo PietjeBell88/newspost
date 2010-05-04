@@ -2,6 +2,17 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
+#include <sys/stat.h>
+#include <stdio.h>
+
+typedef unsigned char	boolean;
+
+/* ONLY CHANGE THESE IF YOU GET AN ERROR DURING COMPILATION */
+typedef unsigned char           n_uint8; /* 1 byte unsigned integer */
+typedef unsigned short int      n_uint16; /* 2 byte unsigned integer */
+typedef unsigned int       	n_uint32; /* 4 byte unsigned integer */
+typedef long long               n_int64; /* 8 byte signed integer */
+
 typedef struct{
 	char *data;
 	long length;

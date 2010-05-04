@@ -20,6 +20,8 @@
  */
 
 #include "newspost.h"
+#include "postthread.h"
+#include "queue.h"
 #include "../ui/ui.h"
 #include "socket.h"
 #include "nntp.h"
@@ -43,23 +45,13 @@ static Buff *read_text_file(Buff * text_buffer, const char *filename);
 static void post_file(newspost_data *data, queue *fifo, file_entry *file_data,
 		      int filenumber, int number_of_files, const char *filestring);
 
-static void *poster_thread(void *arg);
-
 static Buff *make_subject(Buff *subject, newspost_data *data,
 	int filenumber, int number_of_files, const char *filename,
 	int partnumber, int number_of_parts, const char *filestring);
 
-typedef struct {
-	newspost_data *data;
-	queue *fifo;
-	int thread_id;
-} newspost_postthreadarg_t;
-
 /**
 *** Public Routines
 **/
-
-pthread_key_t key_thread_id;
 
 int newspost(newspost_data *data, SList *file_list) {
 	int retval;
@@ -120,6 +112,21 @@ static int post_text_file(newspost_data *data, SList *file_list) {
 	return retval;
 }
 
+void * status_update(void *sth) {
+	int sleepytime = 1;
+	queue *q = (queue *) sth;
+
+	pthread_mutex_lock(q->mut);
+	while(!q->producer_done) {
+		pthread_mutex_unlock(q->mut);
+		rate_print(sleepytime);
+		sleep(sleepytime);
+		pthread_mutex_lock(q->mut);
+	}
+	pthread_mutex_unlock(q->mut);
+	return NULL;
+}
+
 static int encode_and_post(newspost_data *data, SList *file_list,
 			    SList *parfiles) {
 	int number_of_files;
@@ -128,22 +135,34 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	int retval = NORMAL;
 	pthread_t *thread_array =
 		(pthread_t *) malloc(data->threads * sizeof(pthread_t));
+	threadinfo_array = (newspost_threadinfo_t *) malloc(data->threads * sizeof(newspost_threadinfo_t));
 	newspost_postthreadarg_t *poster_args =
 		(newspost_postthreadarg_t *) malloc(data->threads * sizeof(newspost_postthreadarg_t));
 	queue *fifo;
 
-	fifo = queue_init(data);
+	pthread_t status_thread;
+
+	fifo = queue_init(data->threads * 2);
+
+	nthreads = data->threads;
 
 	pthread_key_create(&key_thread_id, NULL);
+
+	rwlock = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(rwlock, NULL);
 
 	for(j = 0; j < data->threads; j++) {
 		poster_args[j].data = data;
 		poster_args[j].fifo = fifo;
 		poster_args[j].thread_id = j;
 
+		threadinfo_array[j].threadid = j;
+		threadinfo_array[j].bytes_written = 0;
+
 		pthread_create(&thread_array[j], NULL, poster_thread, &poster_args[j]);
 	}
 
+	pthread_create(&status_thread, NULL, status_update, fifo);
 
 	/* post any sfv files... */
 	if (data->sfv != NULL) {
@@ -208,6 +227,7 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 
 	queue_delete(fifo);
 	free(poster_args);
+	free(threadinfo_array);
 	free(thread_array);
 
 	return retval;
@@ -253,126 +273,6 @@ static void post_file(newspost_data *data, queue *fifo, file_entry *file_data,
 
 	//ui_posting_file_done();
 	return;
-}
-
-static void *poster_thread(void *arg)
-{
-	/* readability */
-	newspost_postthreadarg_t * arguments = (newspost_postthreadarg_t *) arg;
-
-	newspost_data *data = arguments->data;
-	queue *fifo = arguments->fifo;
-	int thread_id = arguments->thread_id;
-
-	/* variable declaration/definition */
-	int sockfd = -1;
-
-	post_article_t article;
-	char *data_buffer = (char *) malloc(get_buffer_size_per_encoded_part(data));
-
-	int total_failures = 0;
-	int number_of_tries = 0;
-
-	int retval;
-
-	int number_of_bytes;
-	int number_of_parts;
-
-	/* initialize */
-	article.file_data = NULL;
-	article.partnumber = -1;
-	article.subject = NULL;
-
-	/* set the thread id */
-	pthread_setspecific(key_thread_id, &thread_id) ;
-
-	/* create the socket */
-	while (sockfd < 0) {
-		ui_socket_connect_start(data->address->data);
-		sockfd = socket_create(data->address->data, data->port);
-
-		if (sockfd >= 0)
-			break;
-
-		ui_socket_connect_failed(sockfd);
-		number_of_tries++;
-
-		if (number_of_tries >= 5) {
-			ui_too_many_failures();
-			free(data_buffer);
-			pthread_exit(NULL);
-		}
-		sleep(120);
-	}
-	ui_socket_connect_done();
-	number_of_tries = 0;
-
-	/* log on to the server */
-	ui_nntp_logon_start(data->address->data);
-	if (nntp_logon(sockfd, data) == FALSE) {
-		socket_close(sockfd);
-		free(data_buffer);
-		pthread_exit(NULL);
-	}
-	ui_nntp_logon_done();
-
-	while (TRUE) {
-		pthread_mutex_lock(fifo->mut);
-		while (fifo->empty && !fifo->producer_done)
-			pthread_cond_wait(fifo->notEmpty, fifo->mut);
-
-		retval = queue_item_del(fifo, &article);
-
-		pthread_mutex_unlock(fifo->mut);
-
-		if (retval == QUEUE_PRODUCER_DONE)
-			break;
-
-		pthread_cond_signal(fifo->notFull);
-
-		number_of_bytes = get_encoded_part(data, article.file_data, article.partnumber, data_buffer);
-		/* FIXME Recalculated for every part */
-		number_of_parts = get_number_of_encoded_parts(data, article.file_data);
-
-		ui_posting_part_start(article.file_data, article.partnumber, number_of_parts,
-					number_of_bytes);
-
-
-		retval = nntp_post(sockfd, article.subject->data, data, data_buffer, number_of_bytes, FALSE);
-
-		if (retval == NORMAL) {
-			ui_posting_part_done(article.file_data, article.partnumber, number_of_parts,
-					number_of_bytes);
-		}
-		else if (retval == POSTING_NOT_ALLOWED)
-			return NULL;
-		else {
-			if (number_of_tries < 5) {
-				ui_nntp_posting_retry();
-				sleep(5);
-				number_of_tries++;
-				continue;
-			}
-			else {
-				total_failures++;
-				if (total_failures == 5) {
-					nntp_logoff(sockfd);
-					socket_close(sockfd);
-					ui_too_many_failures();
-				}
-			}
-		}
-		number_of_tries = 0;
-	}
-
-	nntp_logoff(sockfd);
-	socket_close(sockfd);
-
-	buff_free(article.subject);
-	free(data_buffer);
-
-	pthread_exit(NULL);
-	return NULL;
 }
 
 static Buff *make_subject(Buff *subject, newspost_data *data, int filenumber,

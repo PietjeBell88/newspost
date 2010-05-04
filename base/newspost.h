@@ -14,11 +14,6 @@
 
 /* #define REPORT_ONLY_FULLPARTS */ /* limit update of KBps display */
 
-/* ONLY CHANGE THESE IF YOU GET AN ERROR DURING COMPILATION */
-typedef unsigned char           n_uint8; /* 1 byte unsigned integer */
-typedef unsigned short int      n_uint16; /* 2 byte unsigned integer */
-typedef unsigned int       	n_uint32; /* 4 byte unsigned integer */
-typedef long long               n_int64; /* 8 byte signed integer */
 
 /***********************************/
 /* END OF CONFIGURABLE DEFINITIONS */
@@ -34,7 +29,6 @@ typedef long long               n_int64; /* 8 byte signed integer */
 #include <stdlib.h>
 #include <unistd.h>
 
-typedef n_uint8                 boolean;
 #define FALSE 0
 #define TRUE 1
 
@@ -57,8 +51,6 @@ typedef n_uint8                 boolean;
 #define LOGON_FAILED -4
 #define POSTING_NOT_ALLOWED -5
 #define POSTING_FAILED -6
-
-extern pthread_key_t key_thread_id;
 
 typedef struct {
 	Buff * subject;

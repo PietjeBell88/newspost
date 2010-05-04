@@ -23,27 +23,24 @@
 #include "ui.h"
 #include "errors.h"
 #include "../base/encode.h"
+#include "../base/postthread.h"
 
 time_t post_delay = SLEEP_TIME;
 boolean verbosity = FALSE;
 Buff * tmpdir_ptr = NULL;
 
-static time_t part_start_time;
-
 static time_t start_time;
 
-static long total_bytes_posted = 0;
-static time_t total_posting_time = 0;
+pthread_mutex_t *progress_lock;
+static int total_parts_posted = 0;
+
+//static long total_bytes_posted = 0;
+//static time_t total_posting_time = 0;
 
 static int files_posted = 0;
 
-static file_entry *this_file;
-static int this_partnum;
-static int this_totalparts;
-static int this_bytes;
-
 static const char *byte_print(long numbytes);
-static void rate_print(long bps);
+//static void rate_print();
 static void time_print(time_t interval);
 static const char *plural(long i);
 
@@ -121,6 +118,9 @@ void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles) {
 	struct stat statbuf;
 	file_entry *fileinfo;
 	Buff * buff = NULL;
+
+	progress_lock = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+	pthread_mutex_init(progress_lock, NULL);
 
 	printf("\n");
 	printf("\nFrom: %s", data->from->data);
@@ -280,14 +280,18 @@ void ui_nntp_authentication_failed(const char *response) {
 
 /* called with EVERY command */
 void ui_nntp_command_issued(const char *command) {
+	/*
 	printf("\n(Thread %d) command: %s", *((int *) pthread_getspecific(key_thread_id)), command);
 	fflush(stdout);
+	*/
 }
 
 /* called with EVERY response */
 void ui_nntp_server_response(const char *response) {
+	/*
 	printf("\n(Thread %d) response: %s", *((int *) pthread_getspecific(key_thread_id)), response);
 	fflush(stdout);
+	*/
 }
 
 
@@ -298,88 +302,34 @@ void ui_nntp_unknown_response(const char *response) {
 }
 
 int ui_chunk_posted(long chunksize, long bytes_written) {
-	int percent_done;
-	time_t time_to_post = 0;
-	time_t time_between_chunks = -1;
+	int tid = *((int *) pthread_getspecific(key_thread_id));
+	newspost_threadinfo_t * tinfo = &threadinfo_array[tid];
 
-	static time_t lastchunktime = 0;
-	time_t thischunktime = time(NULL);
-
-	if (this_file->parts == NULL) {
-		percent_done = ( ((double) (this_partnum - 1) /
-				     this_totalparts) +
-				 ((double) bytes_written /
-				  (this_bytes * this_totalparts)) )
-				* 100;
-
-		if (percent_done > 99) {
-			percent_done = 99;
-			if ((this_bytes - bytes_written) < chunksize)
-				percent_done = 100;
-		}
-
-		printf("\n(Thread %d) Posting part %i of %i - %i%% ",
-			*((int *) pthread_getspecific(key_thread_id)), this_partnum, this_totalparts, percent_done);
-	}
-	else
-		printf("\n(Thread %d) Posting part %i ", *((int *) pthread_getspecific(key_thread_id)), this_partnum);
-
-	bytes_written += total_bytes_posted;
-	if (bytes_written > 50000) {
-		time_to_post = total_posting_time +
-			(thischunktime - part_start_time);
-		if (time_to_post > 0) {
-			printf("- ");
-			rate_print(bytes_written / time_to_post);
-		}
-	}
-
-	fflush(stdout);
-
-	if (lastchunktime > 0)
-		time_between_chunks = thischunktime - lastchunktime;
-
-	lastchunktime = thischunktime;
-
-	if (time_between_chunks >= 0) {
-		if (time_between_chunks < 1)
-			return (chunksize * 2);
-		else if (time_between_chunks > 3)
-			if (chunksize > 256)
-				return (chunksize / 2);
+	if (chunksize != 0) {
+		pthread_mutex_lock(rwlock);
+		tinfo->bytes_written += chunksize;
+		pthread_mutex_unlock(rwlock);
 	}
 	return chunksize;
 }
 
 void ui_posting_part_start(file_entry *filedata, int part_number, 
 			   int number_of_parts, long number_of_bytes) {
-	this_file = filedata;
-	this_partnum = part_number;
-	this_totalparts = number_of_parts;
-	this_bytes = number_of_bytes;
+	//int tid = *((int *) pthread_getspecific(key_thread_id));
+	//newspost_threadinfo_t * tinfo = &threadinfo_array[tid];
 
-	part_start_time = time(NULL);
+	/*
+	pthread_mutex_lock(rwlock);
+	tinfo->part_start_time = time(NULL);
+	pthread_mutex_unlock(rwlock);*/
 }
 
 void ui_posting_part_done(file_entry *filedata, int part_number, 
 			  int number_of_parts, long number_of_bytes) {
-	time_t time_it_took;
 
-	time_it_took = (time(NULL) - part_start_time);
-
-	total_posting_time += time_it_took;
-	total_bytes_posted += number_of_bytes;
-
-	if (filedata->parts != NULL) {
-		printf("\rPosting part %i: done.                    \n",
-		       part_number);
-		fflush(stdout);
-	}
-	else if (verbosity == TRUE) {
-		printf("\rPosting part %i of %i: done.                    \n",
-		       part_number, number_of_parts);
-		fflush(stdout);
-	}
+	pthread_mutex_lock(progress_lock);
+	total_parts_posted += 1;
+	pthread_mutex_unlock(progress_lock);
 }
 
 /* when we fail to post an article */
@@ -480,8 +430,8 @@ void ui_posting_file_done() {
 
 void ui_post_done() {
 	time_t totaltime = (time(NULL) - start_time);
-	long totalbps;
 
+	/*
 	if(total_posting_time > 0){
 		totalbps = (total_bytes_posted / total_posting_time);
 	}
@@ -492,14 +442,14 @@ void ui_post_done() {
 	printf("\rPosted %i file%s (%s encoded) in ",
 		files_posted, plural(files_posted),
 		byte_print(total_bytes_posted));
-
+*/
 	time_print(totaltime);
 	printf(".     ");
-
+/*
 	if(totalbps > 0){
 		rate_print(totalbps);
 	}
-
+*/
 	printf("\n");
 }
 
@@ -551,14 +501,30 @@ static const char *byte_print(long numbytes) {
 	return byte_string;
 }
 
-static void rate_print(long bps) {
-	if (bps > 1024) {
-		if (bps > 10240)
-			printf("%li KB/second ", bps / 1024);
-		else
-			printf("%.1f KB/second ", (double) bps / 1024);
-	} else
-		printf("%li bytes/second ", bps);
+void rate_print(int sleepytime) {
+	long bytes_written = 0;
+	long bps;
+	int i;
+	newspost_threadinfo_t * tinfo = NULL;
+
+	pthread_mutex_lock(rwlock);
+	for (i = 0; i < nthreads; i++) {
+		tinfo = &threadinfo_array[i];
+		bytes_written += tinfo->bytes_written;
+		tinfo->bytes_written = 0;
+
+	}
+	pthread_mutex_unlock(rwlock);
+
+	bps = bytes_written / sleepytime;
+
+	if (bps > 1048576)
+		printf("%lf MB/second\r", (double) bps / 1048576);
+	else if (bps > 1024)
+		printf("%1f KB/second\r", (double) bps / 1024);
+	else
+		printf("%li bytes/second\r", bps);
+	fflush(stdout);
 }
 
 static void time_print(time_t interval) {
