@@ -4,7 +4,7 @@
 
 #include "newspost.h"
 
-#define BYTES_PER_LINE 45
+#define BYTES_PER_LINE 128
 #define UU_CHARACTERS_PER_LINE 64
 
 /* fills fillme with encoded data, and returns how many characters it wrote */
