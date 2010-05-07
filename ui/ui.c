@@ -235,7 +235,7 @@ void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles) {
 
 void ui_socket_connect_start(newspost_threadinfo *tinfo, const char *servername) {
 	if (verbosity == TRUE) {
-		printf("\n(Thread %d) Connecting to %s...", tinfo->thread_id, servername);
+		printf("(Thread %d) Connecting to %s...\n", tinfo->thread_id, servername);
 		fflush(stdout);
 	}
 }
@@ -243,32 +243,32 @@ void ui_socket_connect_start(newspost_threadinfo *tinfo, const char *servername)
 void ui_socket_connect_failed(newspost_threadinfo *tinfo, int retval) {
 	if (verbosity == TRUE) {
 		if (retval == FAILED_TO_RESOLVE_HOST)
-			printf("\n(Thread %d) Connecting failed: \"Failed to resolve host\", retrying in 120 seconds...", tinfo->thread_id);
+			printf("(Thread %d) Connecting failed: \"Failed to resolve host\", retrying in 120 seconds...\n", tinfo->thread_id);
 		else if (retval == FAILED_TO_CREATE_SOCKET)
-			printf("\n(Thread %d) Connecting failed: \"Failed to create socket\", retrying in 120 seconds...", tinfo->thread_id);
+			printf("(Thread %d) Connecting failed: \"Failed to create socket\", retrying in 120 seconds...\n", tinfo->thread_id);
 		else
-			printf("\n(Thread %d) Connecting failed: \"Unknown error\", retrying in 120 seconds...", tinfo->thread_id);
+			printf("(Thread %d) Connecting failed: \"Unknown error\", retrying in 120 seconds...\n", tinfo->thread_id);
 		fflush(stdout);
 	}
 }
 
 void ui_socket_connect_done(newspost_threadinfo *tinfo) {
 	if (verbosity == TRUE) {
-		printf("\n(Thread %d) Connecting done.", tinfo->thread_id);
+		printf("(Thread %d) Connecting done.\n", tinfo->thread_id);
 		fflush(stdout);
 	}
 }
 
 void ui_nntp_logon_start(newspost_threadinfo *tinfo, const char *servername) {
 	if (verbosity == TRUE) {
-		printf("\n(Thread %d) Logging on to %s...", tinfo->thread_id, servername);
+		printf("(Thread %d) Logging on to %s...\n", tinfo->thread_id, servername);
 		fflush(stdout);
 	}
 }
 
 void ui_nntp_logon_done(newspost_threadinfo *tinfo) {
 	if (verbosity == TRUE) {
-		printf("\n(Thread %d) Logon done.\n", tinfo->thread_id);
+		printf("(Thread %d) Logon done.\n", tinfo->thread_id);
 		fflush(stdout);
 	}
 }
@@ -276,14 +276,14 @@ void ui_nntp_logon_done(newspost_threadinfo *tinfo) {
 /* only called when we get 502: authentication rejected */
 void ui_nntp_authentication_failed(newspost_threadinfo *tinfo, const char *response) {
 	fprintf(stderr,
-		"\n(Thread %d) ERROR: NNTP authentication failed: %s", tinfo->thread_id, response);
+		"(Thread %d) ERROR: NNTP authentication failed: %s\n", tinfo->thread_id, response);
 }
 
 
 /* called with EVERY command */
 void ui_nntp_command_issued(newspost_threadinfo *tinfo, const char *command) {
 	/*
-	printf("\n(Thread %d) command: %s", tinfo->thread_id, command);
+	printf("(Thread %d) command: %s\n", tinfo->thread_id, command);
 	fflush(stdout);
 	*/
 }
@@ -291,7 +291,7 @@ void ui_nntp_command_issued(newspost_threadinfo *tinfo, const char *command) {
 /* called with EVERY response */
 void ui_nntp_server_response(newspost_threadinfo *tinfo, const char *response) {
 	/*
-	printf("\n(Thread %d) response: %s", tinfo->thread_id, response);
+	printf("(Thread %d) response: %s\n", tinfo->thread_id, response);
 	fflush(stdout);
 	*/
 }
@@ -300,7 +300,7 @@ void ui_nntp_server_response(newspost_threadinfo *tinfo, const char *response) {
 /* called when we get an unexpected response */
 void ui_nntp_unknown_response(newspost_threadinfo *tinfo, const char *response) {
 	fprintf(stderr,
-		"\n(Thread %d) WARNING: unexpected server response: %s", tinfo->thread_id, response);
+		"(Thread %d) WARNING: unexpected server response: %s\n", tinfo->thread_id, response);
 }
 
 void ui_posting_file_start(newspost_data *data, file_entry *filedata) {
@@ -310,7 +310,7 @@ void ui_posting_file_start(newspost_data *data, file_entry *filedata) {
 	int number_of_parts = filedata->number_enc_parts;
 	int bytes_in_first_part = get_encoded_part(data, filedata, 1, data_buffer);
 
-	printf("\n%s - %s (%i part%s",
+	printf("Posting file: %s - %s (%i part%s",
 	       n_basename(filedata->filename->data),
 	       byte_print(filedata->fileinfo.st_size),
 	       number_of_parts,
@@ -390,7 +390,7 @@ void ui_posting_file_start(newspost_data *data, file_entry *filedata) {
 }
 
 void ui_posting_file_done(newspost_data *data, file_entry *filedata) {
-	printf("\nPosting of %s - %s (%i part%s) done!",
+	printf("Posting of %s - %s (%i part%s) done!\n",
 	       n_basename(filedata->filename->data),
 	       byte_print(filedata->fileinfo.st_size),
 	       filedata->number_enc_parts,
@@ -408,14 +408,14 @@ int ui_chunk_posted(newspost_threadinfo *tinfo, long chunksize, long bytes_writt
 
 void ui_posting_part_start(newspost_threadinfo *tinfo, file_entry *filedata, int part_number) {
 	if (verbosity == TRUE) {
-		printf("\n(Thread %d) Starting to post part %d/%d.\n", tinfo->thread_id, part_number, filedata->number_enc_parts);
+		printf("(Thread %d) Starting to post part %d/%d.", tinfo->thread_id, part_number, filedata->number_enc_parts);
 		fflush(stdout);
 	}
 }
 
 void ui_posting_part_done(newspost_threadinfo *tinfo, file_entry *filedata, int part_number) {
 	if (verbosity == TRUE) {
-		printf("\n(Thread %d) Finished posting part %d/%d.\n", tinfo->thread_id, part_number, filedata->number_enc_parts);
+		printf("(Thread %d) Finished posting part %d/%d.\n", tinfo->thread_id, part_number, filedata->number_enc_parts);
 		fflush(stdout);
 	}
 

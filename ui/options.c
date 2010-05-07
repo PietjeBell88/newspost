@@ -232,6 +232,10 @@ SList *parse_input_files(int argc, char **argv, int optind,
 				/* it's a good file */
 				boolean postany = TRUE;
 
+				int numparts = get_number_of_encoded_parts(data, this_file_entry);
+				this_file_entry->number_enc_parts = numparts;
+				this_file_entry->parts_to_post = numparts;
+
 				/* for file parts */
 				if (thisfilepart == TRUE)
 					postany = parse_file_parts(data, 
@@ -949,8 +953,6 @@ static boolean parse_file_parts(newspost_data *data,
 	numparts = get_number_of_encoded_parts(data, this_file_entry);
 	this_file_entry->parts = (boolean *) calloc((numparts + 1),
 		sizeof(boolean));
-	this_file_entry->number_enc_parts = numparts;
-	this_file_entry->parts_to_post = numparts; /* usually all parts are posted, so this is default */
 
 	/* i is on the colon */
 	i++;

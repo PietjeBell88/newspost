@@ -293,6 +293,8 @@ static void *poster_thread(void *arg)
 
 	int number_of_bytes;
 
+	tinfo->sockfd = -1;
+
 	/* initialize */
 	article.file_data = NULL;
 	article.partnumber = -1;
