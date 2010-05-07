@@ -240,10 +240,15 @@ SList *parse_input_files(int argc, char **argv, int optind,
 				else
 					this_file_entry->parts = NULL;
 
-				if (postany == TRUE)
+				if (postany == TRUE) {
+					/* initialize the read/write lock for this file entry */
+					this_file_entry->rwlock = (pthread_rwlock_t *) malloc(sizeof(pthread_rwlock_t));
+					pthread_rwlock_init(this_file_entry->rwlock, NULL);
+
 					/* add it to the list */
 					file_list = slist_append(file_list,
 							this_file_entry);
+				}
 			}
 		}
 		else {
@@ -944,6 +949,9 @@ static boolean parse_file_parts(newspost_data *data,
 	numparts = get_number_of_encoded_parts(data, this_file_entry);
 	this_file_entry->parts = (boolean *) calloc((numparts + 1),
 		sizeof(boolean));
+	this_file_entry->number_enc_parts = numparts;
+	this_file_entry->parts_to_post = numparts; /* usually all parts are posted, so this is default */
+
 	/* i is on the colon */
 	i++;
 	while (i < strlen(arg)) {
@@ -1028,11 +1036,14 @@ static boolean parse_file_parts(newspost_data *data,
 	postany = FALSE;
 	postall = TRUE;
 
-	for (i = 1; i <= numparts; i++)
+	for (i = 1; i <= numparts; i++) {
 		if (this_file_entry->parts[i] == TRUE)
 			postany = TRUE;
-		else
+		else {
 			postall = FALSE;
+			this_file_entry->parts_to_post--;
+		}
+	}
 
 	/* not posting any parts */
 	if (postany == FALSE) {

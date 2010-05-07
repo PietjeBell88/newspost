@@ -66,13 +66,13 @@ void queue_delete(queue *q) {
 
 	free(q->article_list);
 
-	pthread_mutex_destroy (q->mut);
-	free (q->mut);
-	pthread_cond_destroy (q->notFull);
-	free (q->notFull);
-	pthread_cond_destroy (q->notEmpty);
-	free (q->notEmpty);
-	free (q);
+	pthread_mutex_destroy(q->mut);
+	free(q->mut);
+	pthread_cond_destroy(q->notFull);
+	free(q->notFull);
+	pthread_cond_destroy(q->notEmpty);
+	free(q->notEmpty);
+	free(q);
 }
 
 void queue_item_add(queue *q, post_article_t *in) {

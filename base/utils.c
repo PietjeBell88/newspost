@@ -29,6 +29,9 @@ file_entry * file_entry_alloc(){
 	file_entry * fe = malloc(sizeof(file_entry));
 	fe->parts = NULL;
 	fe->filename = NULL;
+	fe->rwlock = NULL;
+	fe->parts_posted = 0;
+	fe->post_started = FALSE;
 	return fe;
 }
 
@@ -38,6 +41,10 @@ file_entry * file_entry_free(file_entry *fe){
 			free(fe->parts);
 		if(fe->filename != NULL)
 			buff_free(fe->filename);
+		if(fe->rwlock != NULL) {
+			pthread_rwlock_destroy(fe->rwlock);
+			free(fe->rwlock);
+		}
 		free(fe);
 	}
 	return NULL;

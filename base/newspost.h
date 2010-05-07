@@ -14,7 +14,6 @@
 
 /* #define REPORT_ONLY_FULLPARTS */ /* limit update of KBps display */
 
-
 /***********************************/
 /* END OF CONFIGURABLE DEFINITIONS */
 /***********************************/
@@ -29,16 +28,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define FALSE 0
-#define TRUE 1
-
 #include "utils.h"
 
 /* remember to change VERSION and PAR_CLIENT for new version numbers */
 #define VERSION "2.2.1"
 #define PAR_CLIENT 0xFE020101
 
-#define NEWSPOSTURL "http://newspost.unixcab.org/"
+#define NEWSPOSTURL "http://newspost.unixcab.org/ & http://github.com/PietjeBell88/newspost"
 #define NEWSPOSTNAME "Newspost"
 #define USER_AGENT NEWSPOSTNAME "/" VERSION " (" NEWSPOSTURL ")"
 
@@ -79,6 +75,16 @@ typedef struct {
 	SList * extra_headers;
 }
 newspost_data;
+
+typedef struct {
+	int thread_id;
+	int sockfd;
+
+	/* only the following properties need locking */
+	pthread_rwlock_t *rwlock;
+	long bytes_written; /* since the last progress */
+}
+newspost_threadinfo;
 
 int newspost(newspost_data *data, SList *file_list);
 
