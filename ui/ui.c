@@ -35,7 +35,7 @@ time_t post_delay = SLEEP_TIME;
 boolean verbosity = FALSE;
 Buff * tmpdir_ptr = NULL;
 
-static time_t start_time;
+static struct timeval start_time;
 
 pthread_rwlock_t *progress_lock;
 static int total_parts_posted = 0;
@@ -47,7 +47,6 @@ static void rate_print();
 static void time_print(time_t interval);
 static const char *plural(long i);
 static int length_as_char(int number);
-static long time_in_ms();
 
 /**
 *** Public Routines
@@ -243,7 +242,7 @@ void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles) {
 		sleep(1);
 	}
 	printf("\n");
-	start_time = time(NULL);
+	gettimeofday(&start_time, NULL);
 	fflush(stdout);
 }
 
@@ -453,10 +452,15 @@ void ui_nntp_posting_retry(newspost_threadinfo *tinfo) {
 }
 
 void ui_post_done() {
-	time_t totaltime = (time(NULL) - start_time);
+	struct timeval current_time;
+	long total_time;
+
+	gettimeofday(&current_time, NULL);
+
+	total_time = current_time.tv_sec - start_time.tv_sec;
 
 	printf("\n");
-	time_print(totaltime);
+	time_print(total_time);
 	printf(".     ");
 
 	printf("\n");
@@ -501,10 +505,18 @@ static const char *byte_print(long numbytes) {
 
 static void rate_print() {
 	long bps;
-	time_t current_time = time(NULL);
+	struct timeval current_time;
+	long seconds, microseconds, msecs_passed;
 
-	if (current_time > start_time)
-		bps = total_bytes_written / (current_time - start_time);
+	gettimeofday(&current_time, NULL);
+
+	seconds = current_time.tv_sec - start_time.tv_sec;
+	microseconds = current_time.tv_usec - start_time.tv_usec;
+
+	msecs_passed = ( seconds * 1000  + microseconds / 1000.0) + 0.5;
+
+	if (msecs_passed > 0)
+		bps = (1000 * total_bytes_written) / msecs_passed;
 	else
 		bps = 0;
 
@@ -543,12 +555,4 @@ static int length_as_char(int number) {
 	char numbuf[32];
 	sprintf(numbuf, "%i", number);
 	return strlen(numbuf);
-}
-
-static long time_in_ms() {
-	struct timeval time;
-
-	gettimeofday(&time, NULL);
-
-	return ((time.tv_sec) * 1000 + time.tv_usec/1000.0) + 0.5;
 }
