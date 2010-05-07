@@ -519,9 +519,9 @@ static void rate_print() {
 	msecs_passed = seconds * 1000  + microseconds / 1000.0;
 
 	if (msecs_passed > 0)
-		bps = (1000 * total_bytes_written) / msecs_passed;
+		bps = (1000.0 * total_bytes_written) / msecs_passed;
 	else
-		bps = 0;
+		bps = 0.0;
 
 	printf("[%0*i/%i]  ", length_as_char(total_number_of_parts), total_parts_posted, total_number_of_parts);
 
