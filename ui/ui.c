@@ -464,6 +464,9 @@ void ui_post_done() {
 	printf(".     ");
 
 	printf("\n");
+
+	pthread_rwlock_destroy(progress_lock);
+	free(progress_lock);
 }
 
 void ui_generic_error(int error) {
@@ -504,16 +507,16 @@ static const char *byte_print(long numbytes) {
 }
 
 static void rate_print() {
-	long bps;
+	double bps, msecs_passed;
 	struct timeval current_time;
-	long seconds, microseconds, msecs_passed;
+	long seconds, microseconds;
 
 	gettimeofday(&current_time, NULL);
 
 	seconds = current_time.tv_sec - start_time.tv_sec;
 	microseconds = current_time.tv_usec - start_time.tv_usec;
 
-	msecs_passed = ( seconds * 1000  + microseconds / 1000.0) + 0.5;
+	msecs_passed = seconds * 1000  + microseconds / 1000.0;
 
 	if (msecs_passed > 0)
 		bps = (1000 * total_bytes_written) / msecs_passed;
@@ -525,9 +528,9 @@ static void rate_print() {
 	if (bps > 1048576)
 		printf("%.2lf MB/second %5s\r", (double) bps / 1048576, "");
 	else if (bps > 1024)
-		printf("%li KB/second %5s\r", bps / 1024, "");
+		printf("%li KB/second %5s\r", (int) bps / 1024, "");
 	else
-		printf("%li bytes/second %5s\r", bps, "");
+		printf("%li bytes/second %5s\r", (int) bps, "");
 
 	fflush(stdout);
 }
