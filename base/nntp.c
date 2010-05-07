@@ -138,6 +138,9 @@ int nntp_post(newspost_threadinfo *tinfo, const char *subject, newspost_data *da
 		socket_write(sockfd, pi, chunksize);
 		i += chunksize;
 		pi += chunksize;
+		pthread_rwlock_wrlock(tinfo->rwlock);
+		tinfo->bytes_written += chunksize;
+		pthread_rwlock_unlock(tinfo->rwlock);
 #ifndef REPORT_ONLY_FULLPARTS
 		if (!no_ui_updates)
 			chunksize = ui_chunk_posted(tinfo, chunksize, i);
@@ -149,6 +152,10 @@ int nntp_post(newspost_threadinfo *tinfo, const char *subject, newspost_data *da
 	socket_write(sockfd, "\r\n.\r\n", 5);
 
 	nntp_get_response(tinfo, response);
+
+	pthread_rwlock_wrlock(tinfo->rwlock);
+	tinfo->bytes_written += (length - i);
+	pthread_rwlock_unlock(tinfo->rwlock);
 
 	if (!no_ui_updates)
 		ui_chunk_posted(tinfo, (length - i), i);

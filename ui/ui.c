@@ -20,6 +20,9 @@
  */
 
 #include <pthread.h>
+#include <sys/time.h>
+#include <unistd.h>
+
 #include "ui.h"
 #include "errors.h"
 #include "../base/encode.h"
@@ -36,11 +39,15 @@ static time_t start_time;
 
 pthread_rwlock_t *progress_lock;
 static int total_parts_posted = 0;
+static int total_number_of_parts = 0;
+static long total_bytes_written = 0;
 
 static const char *byte_print(long numbytes);
 static void rate_print();
 static void time_print(time_t interval);
 static const char *plural(long i);
+static int length_as_char(int number);
+static long time_in_ms();
 
 /**
 *** Public Routines
@@ -109,6 +116,7 @@ void ui_par_volume_created(const char *filename) {
 	fflush(stdout);
 }
 
+/* also functions as an initializer for the user interface */
 void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles) {
 	int i, j, numparts;
 	time_t waketime;
@@ -155,20 +163,24 @@ void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles) {
 		fileinfo = (file_entry *) listptr->data;
 		if (fileinfo->parts != NULL) {
 			if(fileinfo->parts[0] == FALSE){
-				numparts = get_number_of_encoded_parts(data, fileinfo);
+				numparts = fileinfo->number_enc_parts;
 				partsof++;
 				for (j = 1; j <= numparts; j++) {
-					if (fileinfo->parts[j] == TRUE)
+					if (fileinfo->parts[j] == TRUE) {
 						file_bytes +=
 							(fileinfo->fileinfo.st_size / numparts);
+						total_number_of_parts++;
+					}
 				}
 			}
 			else{
 				i--;
 			}
 		}
-		else
+		else {
 			file_bytes += fileinfo->fileinfo.st_size;
+			total_number_of_parts += fileinfo->number_enc_parts;
+		}
 
 		listptr = slist_next(listptr);
 		i++;
@@ -230,7 +242,9 @@ void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles) {
 		fflush(stdout);
 		sleep(1);
 	}
+	printf("\n");
 	start_time = time(NULL);
+	fflush(stdout);
 }
 
 void ui_socket_connect_start(newspost_threadinfo *tinfo, const char *servername) {
@@ -382,7 +396,6 @@ void ui_posting_file_start(newspost_data *data, file_entry *filedata) {
 		printf(") - only posting part%s%s",plural(p),tmpbuff->data);
 		tmpbuff = buff_free(tmpbuff);
 	}
-
 	printf("\n");
 	fflush(stdout);
 
@@ -398,17 +411,19 @@ void ui_posting_file_done(newspost_data *data, file_entry *filedata) {
 }
 
 int ui_chunk_posted(newspost_threadinfo *tinfo, long chunksize, long bytes_written) {
-	if (chunksize > 0) {
-		pthread_rwlock_wrlock(tinfo->rwlock);
-		tinfo->bytes_written += chunksize;
-		pthread_rwlock_unlock(tinfo->rwlock);
+	/* update the progress info */
+	if (chunksize != 0) {
+		pthread_rwlock_wrlock(progress_lock);
+		total_bytes_written += chunksize;
+		rate_print();
+		pthread_rwlock_unlock(progress_lock);
 	}
 	return chunksize;
 }
 
 void ui_posting_part_start(newspost_threadinfo *tinfo, file_entry *filedata, int part_number) {
 	if (verbosity == TRUE) {
-		printf("(Thread %d) Starting to post part %d/%d.", tinfo->thread_id, part_number, filedata->number_enc_parts);
+		printf("(Thread %d) Starting to post part %d/%d.\n", tinfo->thread_id, part_number, filedata->number_enc_parts);
 		fflush(stdout);
 	}
 }
@@ -423,6 +438,8 @@ void ui_posting_part_done(newspost_threadinfo *tinfo, file_entry *filedata, int 
 	pthread_rwlock_wrlock(progress_lock);
 	total_parts_posted += 1;
 	pthread_rwlock_unlock(progress_lock);
+
+	rate_print();
 }
 
 /* when we fail to post an article */
@@ -482,28 +499,24 @@ static const char *byte_print(long numbytes) {
 	return byte_string;
 }
 
-static void rate_print(newspost_threadinfo *tinfo_array, int threadcount, int sleepytime) {
-	long bytes_written = 0;
+static void rate_print() {
 	long bps;
-	int i;
-	newspost_threadinfo * tinfo = NULL;
+	time_t current_time = time(NULL);
 
-	for (i = 0; i < threadcount; i++) {
-		tinfo = &tinfo_array[i];
-		pthread_rwlock_rdlock(tinfo->rwlock);
-		bytes_written += tinfo->bytes_written;
-		tinfo->bytes_written = 0;
-		pthread_rwlock_unlock(tinfo->rwlock);
-	}
+	if (current_time > start_time)
+		bps = total_bytes_written / (current_time - start_time);
+	else
+		bps = 0;
 
-	bps = bytes_written / sleepytime;
+	printf("[%0*i/%i]  ", length_as_char(total_number_of_parts), total_parts_posted, total_number_of_parts);
 
 	if (bps > 1048576)
-		printf("%lf MB/second\r", (double) bps / 1048576);
+		printf("%.2lf MB/second %5s\r", (double) bps / 1048576, "");
 	else if (bps > 1024)
-		printf("%1f KB/second\r", (double) bps / 1024);
+		printf("%li KB/second %5s\r", bps / 1024, "");
 	else
-		printf("%li bytes/second\r", bps);
+		printf("%li bytes/second %5s\r", bps, "");
+
 	fflush(stdout);
 }
 
@@ -524,4 +537,18 @@ static void time_print(time_t interval) {
 
 static const char *plural(long i) {
 	return (i != 1) ? "s" : "";
+}
+
+static int length_as_char(int number) {
+	char numbuf[32];
+	sprintf(numbuf, "%i", number);
+	return strlen(numbuf);
+}
+
+static long time_in_ms() {
+	struct timeval time;
+
+	gettimeofday(&time, NULL);
+
+	return ((time.tv_sec) * 1000 + time.tv_usec/1000.0) + 0.5;
 }
