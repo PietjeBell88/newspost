@@ -20,7 +20,7 @@ typedef struct {
 	long head, tail;
 	boolean full, empty, producer_done;
 	pthread_mutex_t *mut;
-	pthread_cond_t *cond_not_full, *cond_not_empty, *cond_producer_done;
+	pthread_cond_t *cond_not_full, *cond_not_empty, *cond_producer_done, *cond_empty;
 } queue;
 
 queue *queue_init(int length);

@@ -55,6 +55,8 @@ queue *queue_init(int length) {
 	pthread_cond_init(q->cond_not_empty, NULL);
 	q->cond_producer_done = (pthread_cond_t *) malloc(sizeof(pthread_cond_t));
 	pthread_cond_init(q->cond_producer_done, NULL);
+	q->cond_empty = (pthread_cond_t *) malloc(sizeof(pthread_cond_t));
+	pthread_cond_init(q->cond_empty, NULL);
 
 	return (q);
 }
@@ -76,6 +78,8 @@ void queue_delete(queue *q) {
 	free(q->cond_not_empty);
 	pthread_cond_destroy(q->cond_producer_done);
 	free(q->cond_producer_done);
+	pthread_cond_destroy(q->cond_empty);
+	free(q->cond_empty);
 	free(q);
 }
 

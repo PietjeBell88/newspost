@@ -218,13 +218,18 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	/* Signal that the producer is done */
 	pthread_cond_broadcast(fifo->cond_producer_done);
 
+	/* Wait for the poster threads to clear the queue */
+	pthread_mutex_lock(fifo->mut);
+	pthread_cond_wait(fifo->cond_empty, fifo->mut);
+	pthread_mutex_unlock(fifo->mut);
+
 	/* wake-up sleeping threads so they can exit */
 	pthread_cond_broadcast(fifo->cond_not_empty);
 
 	for(j = 0; j < data->threads; j++) {
 		pthread_rwlock_rdlock(threadinfo_array[j].rwlock);
 		if (threadinfo_array[j].status == THREAD_CONNECTING)
-			socket_close(threadinfo_array[j].sockfd);
+			pthread_cancel(thread_array[j]);
 		pthread_rwlock_unlock(threadinfo_array[j].rwlock);
 
 		pthread_join(thread_array[j], NULL);
@@ -294,7 +299,7 @@ static void *poster_thread(void *arg)
 
 	/* variable declaration/definition */
 	post_article_t article;
-	char *data_buffer = (char *) malloc(get_buffer_size_per_encoded_part(data));
+	char *data_buffer;
 
 	int total_failures = 0;
 	int number_of_tries = 0;
@@ -305,7 +310,6 @@ static void *poster_thread(void *arg)
 
 	struct timespec   ts;
 	struct timeval    tp;
-
 
 	tinfo->sockfd = -1;
 
@@ -339,7 +343,6 @@ static void *poster_thread(void *arg)
 
 		if (number_of_tries >= 5) {
 			ui_connecting_too_many_failures(tinfo);
-			free(data_buffer);
 			pthread_exit(NULL);
 		}
 		pthread_mutex_lock(fifo->mut);
@@ -353,7 +356,6 @@ static void *poster_thread(void *arg)
 		/* quit if the producer signalled it was done */
 		if (fifo->producer_done) {
 			pthread_mutex_unlock(fifo->mut);
-			free(data_buffer);
 			pthread_exit(NULL);
 		}
 		pthread_mutex_unlock(fifo->mut);
@@ -370,10 +372,12 @@ static void *poster_thread(void *arg)
 	ui_nntp_logon_start(tinfo, data->address->data);
 	if (nntp_logon(tinfo, data) == FALSE) {
 		socket_close(tinfo->sockfd);
-		free(data_buffer);
 		pthread_exit(NULL);
 	}
 	ui_nntp_logon_done(tinfo);
+
+	/* allocate the buffer */
+	data_buffer = (char *) malloc(get_buffer_size_per_encoded_part(data));
 
 	while (TRUE) {
 		pthread_mutex_lock(fifo->mut);
@@ -384,8 +388,10 @@ static void *poster_thread(void *arg)
 
 		pthread_mutex_unlock(fifo->mut);
 
-		if (retval == QUEUE_PRODUCER_DONE)
+		if (retval == QUEUE_PRODUCER_DONE) {
+			pthread_cond_broadcast(fifo->cond_empty);
 			break;
+		}
 
 		pthread_cond_signal(fifo->cond_not_full);
 
