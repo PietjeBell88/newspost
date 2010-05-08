@@ -461,9 +461,9 @@ void ui_post_done() {
 
 	printf("\n");
 	time_print(total_time);
-	printf(".     ");
-
-	printf("\n");
+	printf(".     \n");
+	printf("Average speed: ");
+	rate_print();
 
 	pthread_rwlock_destroy(progress_lock);
 	free(progress_lock);
@@ -523,7 +523,8 @@ static void rate_print() {
 	else
 		bps = 0.0;
 
-	printf("[%0*i/%i]  ", length_as_char(total_number_of_parts), total_parts_posted, total_number_of_parts);
+	if (total_parts_posted != total_number_of_parts)
+		printf("[%0*i/%i]  ", length_as_char(total_number_of_parts), total_parts_posted, total_number_of_parts);
 
 	if (bps > 1048576)
 		printf("%.2lf MB/second %5s\r", (double) bps / 1048576, "");
