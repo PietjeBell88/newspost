@@ -67,7 +67,7 @@ typedef struct {
 	Buff * password;
 	int threads;
 	int lines;			/* lines per message */
-	boolean yenc;
+	boolean uuenc;
 	Buff * sfv;	/* filename for generated sfv file */
 	Buff * par;	/* prefix filename for par file(s) */
 	int parnum;			/* number of pars */

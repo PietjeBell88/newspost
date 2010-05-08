@@ -37,7 +37,7 @@
 #define password_option 'p'
 #define threads_option 'N'
 #define lines_option 'l'
-#define yenc_option 'y'
+#define uuenc_option 'U'
 #define sfv_option 'c'
 #define par_option 'a'
 #define parnum_option 'A'
@@ -71,7 +71,7 @@ static const char valid_flags[] = {
 	password_option, ':',
 	threads_option, ':',
 	lines_option, ':',
-	yenc_option,
+	uuenc_option,
 	sfv_option, ':',
 	par_option, ':',
 	parnum_option, ':',
@@ -105,7 +105,7 @@ enum {
 	password,
 	threads,
 	lines,
-	yenc,
+	uuenc,
 	filenumber,
 	noarchive,
 	followupto,
@@ -129,7 +129,7 @@ static const char *rc_keyword[number_of_defaults] = {
 	"password",
 	"threads",
 	"lines",
-	"yenc",
+	"uuenc",
 	"filenumber",
 	"noarchive",
 	"followupto",
@@ -152,7 +152,7 @@ static const char *rc_comment[number_of_defaults] = {
 	"password on news server",
 	"number of threads to use",
 	"lines per message",
-	"0 to uuencode, 1 to yencode",
+	"0 to yencode, 1 to uuencode",
 	"0 doesn't include filenumber in subject line, 1 does",
 	"0 doesn't include X-No-Archive header, 1 does",
 	"the Followup-To header",
@@ -386,8 +386,8 @@ void parse_defaults(newspost_data *data) {
 				    case lines:
 					data->lines = atoi(setting);
 					break;
-				    case yenc:
-					data->yenc = atoi(setting);
+				    case uuenc:
+					data->uuenc = atoi(setting);
 					break;
 				    case filenumber:
 					data->filenumber = atoi(setting);
@@ -520,8 +520,8 @@ boolean set_defaults(newspost_data *data) {
 				"# %s\n%s=%i\n\n# %s\n%s=%i\n\n",
 				rc_comment[lines],
 				rc_keyword[lines], data->lines,
-				rc_comment[yenc],
-				rc_keyword[yenc], data->yenc,
+				rc_comment[uuenc],
+				rc_keyword[uuenc], data->uuenc,
 				rc_comment[filenumber],
 				rc_keyword[filenumber], data->filenumber,
 				rc_comment[noarchive],
@@ -631,8 +631,8 @@ int parse_options(int argc, char **argv, newspost_data *data) {
 				data->lines = atoi(optarg);
 				break;
 
-			case yenc_option:
-				data->yenc = TRUE;
+			case uuenc_option:
+				data->uuenc = TRUE;
 				break;
 
 			case sfv_option:
@@ -751,8 +751,8 @@ int parse_options(int argc, char **argv, newspost_data *data) {
 					data->extra_headers = NULL;
 					break;
 
-				case yenc_option:
-					data->yenc = FALSE;
+				case uuenc_option:
+					data->uuenc = FALSE;
 					break;
 
 				case filenumber_option:
@@ -918,7 +918,7 @@ void print_help() {
 	printf("\n  -%c ARG - a complete header line", extraheader_option);
 	printf("\n  -%c     - include \"File x of y\" in subject line",
 		filenumber_option);
-	printf("\n  -%c     - yencode instead of uuencode", yenc_option);
+	printf("\n  -%c     - uuencode instead of yencode", uuenc_option);
 	printf("\n  -%c ARG - generate SFV file", sfv_option);
 	printf("\n  -%c ARG - generate PAR files",par_option);
 	printf("\n  -%c ARG - number of PAR volumes to create", parnum_option);

@@ -468,7 +468,7 @@ static Buff *make_subject(Buff *subject, newspost_data *data, int filenumber,
 	}
 	sprintf(numbuf, "%i", number_of_parts);
 	numsize = strlen(numbuf);
-	subject = buff_add(subject, (data->yenc == TRUE) ? "\"%s\" yEnc (%0*i/%i)" :
+	subject = buff_add(subject, (data->uuenc == FALSE) ? "\"%s\" yEnc (%0*i/%i)" :
 		"%s (%0*i/%i)", n_basename(filename), numsize,
 		partnumber, number_of_parts);
 	return subject;
@@ -487,7 +487,7 @@ static SList *preprocess(newspost_data *data, SList *file_list) {
 	}
 
 	/* calculate CRCs if needed; generate any sfv files */
-	if ((data->yenc == TRUE) || (data->sfv != NULL)) {
+	if ((data->uuenc == FALSE) || (data->sfv != NULL)) {
 		calculate_crcs(file_list);
 
 		if (data->sfv != NULL)
@@ -497,7 +497,7 @@ static SList *preprocess(newspost_data *data, SList *file_list) {
 	/* generate any par files */
 	if (data->par != NULL) {
 		parfiles = par_newspost_interface(data, file_list);
-		if (data->yenc == TRUE)
+		if (data->uuenc == FALSE)
 			calculate_crcs(parfiles);
 	}
 

@@ -59,14 +59,14 @@ int main(int argc, char **argv) {
 	main_data.user = NULL;
 	main_data.password = NULL;
 	main_data.threads = 1;
-	main_data.lines = 7500;
-	main_data.yenc = FALSE;
+	main_data.lines = 5000;
+	main_data.uuenc = FALSE;
 	main_data.sfv = NULL;
 	main_data.par = NULL;
 	main_data.parnum = 0;
 	main_data.filesperpar = 10;
 	main_data.reference = NULL;
-	main_data.filenumber = FALSE;
+	main_data.filenumber = TRUE;
 	main_data.tmpdir = NULL;
 	main_data.noarchive = TRUE;
 	main_data.followupto = NULL;

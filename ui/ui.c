@@ -220,7 +220,7 @@ void ui_post_start(newspost_data *data, SList *file_list, SList *parfiles) {
 		}
 		
 		printf("\n%s %s total and posting to %s\n\n",
-		       (data->yenc == TRUE) ? "Yencoding" : "UUencoding",
+		       (data->uuenc == FALSE) ? "Yencoding" : "UUencoding",
 		       byte_print(total_bytes), data->address->data);
 	}
 	else {
@@ -334,7 +334,7 @@ void ui_posting_file_start(newspost_data *data, file_entry *filedata) {
 
 		printf(", ");
 
-		if (data->yenc != TRUE)
+		if (data->uuenc == TRUE)
 			estimate = filedata->fileinfo.st_size
 				   * UU_CHARACTERS_PER_LINE
 				   / BYTES_PER_LINE;

@@ -39,7 +39,7 @@ int get_number_of_encoded_parts(newspost_data *data, file_entry *file) {
 /* returns the buffer size that should be used for encoded data */
 long get_buffer_size_per_encoded_part(newspost_data *data) {
 
-	if (data->yenc == TRUE) {
+	if (data->uuenc == FALSE) {
 		/* Worst-case for yenc is twice the original size, plus
 		 * the line endings; though realistically it will be only
 		 * a few percent bigger than the original.
@@ -77,7 +77,7 @@ long get_encoded_part (newspost_data *data, file_entry *file,
 		fseek(fp, (message_size * (partnumber - 1)), SEEK_SET);
 
 	/* and encode */
-	if (data->yenc == TRUE) {
+	if (data->uuenc == FALSE) {
 		long pbegin, pend, psize;
 		n_uint32 crc = 0;
 
