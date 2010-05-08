@@ -84,24 +84,9 @@ the file is a generated .PAR file, the string is ' \- PAR File 01 of 10: '
 (depending on the .PAR file number and the number of .PAR files).  See
 EXAMPLES for more information.
 .TP 
-\fB\-y\fR
-Use yencoding instead of uuencoding.  Yencoding results in smaller, faster
-posts, but most news readers do not support yencoding.  When yencoding is
-enabled, ' \- "filename" yEnc (1/9)' is appended to the subject line
-instead of what is specified above for the \-s option.  Please see
-http://www.yenc.org for more information about yencoding.
-.TP 
-\fB\-e\fR <\fIfilename\fP>
-Posts <\fIfilename\fP> as a text file (no encoding) before the first file
-posted.  This file is posted with the exact subject line as the first file
-posted, except that (0/9) is displayed as the part number (depending on
-the number of parts in the first file posted).  As an alternative, "\-0" 
-(zero, not 'O') may be used instead of "\-e".
-.TP 
-\fB\-E\fR
-Opens the editor set by the EDITOR environment variable to create a
-temporary text file which is posted as a prefix, like a file specified
-with the \-e option.  If EDITOR is not set then vi is used.
+\fB\-U\fR
+Use uuencoding instead of yencoding.  Yencoding results in smaller, faster
+posts, but archaic news readers do not support yencoding.
 .TP 
 \fB\-c\fR <\fIfilename\fP>
 Generates and posts a .SFV checksum file named <\fIfilename\fP>.  If
@@ -129,8 +114,8 @@ one .PAR volume for every ten files posted.
 .TP 
 \fB\-l\fR <\fInumber\fP>
 Sets the number of lines per message to <\fInumber\fP>.  Most people post
-messages which are between 5000 and 10000 lines long.  By default, this is
-set to 7500.  Note: For uuencoded messages, this is the actual number of 
+messages which are between 3450 and 5000 lines long. By default, this is
+set to 5000. Note: For uuencoded messages, this is the actual number of
 lines in the body of the message; but for yencoded messages, it's used to 
 determine the size of each segment before encoding, by multiplying the 
 specified number of lines by 45 (which is the size of a uuencoded line 
@@ -162,11 +147,11 @@ by default.
 \fB\-d\fR
 Sets the current options as default by saving them to $HOME/.newspostrc.  
 Only the following options may be saved as default: \-i, \-z, \-u, \-p,
-\-f, \-F, \-o, \-n, \-w, \-m, \-x, \-q, \-y, \-B, \-l, \-X, and \-k.
+\-f, \-F, \-o, \-n, \-w, \-m, \-x, \-q, \-U, \-B, \-l, \-X, and \-k.
 .TP 
 \fB\-D\fR <\fIoption\fP>
-This option disables or clears other options.  When y, q, or x is passed
-as <\fIoption\fP>, it has the OPPOSITE effect of either the \-y, \-q, or
+This option disables or clears other options.  When U, q, or x is passed
+as <\fIoption\fP>, it has the OPPOSITE effect of either the \-U, \-q, or
 \-x option, respectively.  It will clear the corresponding options for u,
 p, F, o, w, and m.  It also takes X as an argument, but it clears ALL
 extra headers set with the \-X option.  This option may be specified
@@ -245,33 +230,33 @@ newspost \-d \-i news.myisp.com \-f newspost@sdf.lonestar.org \-F 'Jim Faulkner'
 .TP 
 \fBPost some files to alt.binaries.test:\fP
 .br 
-newspost \-n alt.binaries.test \-s 'Here are some songs' /nfs/music/*.mp3
+newspost \-n alt.binaries.test \-s 'Here are some songs'
+/nfs/music/*.mp3
+.TP 
+\fBA subject line from the above post may look like this:\fP
+.br 
+Here are some songs \- "track01.mp3" yEnc (01/12)
+.TP 
+\fBPost some files to alt.binaries.test using uuencoding:\fP
+.br 
+newspost \-U \-n alt.binaries.test \-s 'Here are some more songs' /nfs/music/*.mp3
 .TP 
 \fBA subject line from the above post may look like this:\fP
 .br 
 Here are some songs \- track01.mp3 (01/15)
 .TP 
-\fBPost some files to alt.binaries.test.yenc using yencoding:\fP
-.br 
-newspost \-y \-n alt.binaries.test.yenc \-s 'Here are some more songs'
-/nfs/music/*.mp3
-.TP 
-\fBA subject line from the above post may look like this:\fP
-.br 
-Here are some more songs \- "track01.mp3" yEnc (01/12)
-.TP 
 \fBInclude "File x of y" in the subject:\fP
 .br 
-newspost \-q \-y \-n alt.binaries.test.yenc \-s 'Here are some more songs'
+newspost \-q \-n alt.binaries.test \-s 'Here are some more songs'
 track01.mp3 track02.mp3 track03.mp3
 .TP 
 \fBA subject line from the above post may look like this:\fP
 .br 
 Here are some more songs \- File 1 of 3: "track01.mp3" yEnc (01/12)
 .TP 
-\fBMake yencode and "File x of y" the default:\fP
+\fBMake uuencode the default:\fP
 .br 
-newspost \-d \-q \-y
+newspost \-d \-U
 .TP 
 \fBAdd extra headers to every post by default:\fP
 .br 
@@ -279,7 +264,7 @@ newspost \-d \-X 'X\-My\-Stupid\-Header\-1' \-X 'X\-My\-Stupid\-Header\-2'
 .TP 
 \fBClear extra headers and "File x of y", set uuencode, default:\fP
 .br 
-newspost \-d \-DX \-Dq \-Dy
+newspost \-d \-DX \-Dq \-U
 .TP 
 \fBGenerate and include an SFV file:\fP
 .br 
@@ -302,7 +287,7 @@ some songs' /nfs/music/*.mp3
 .TP 
 \fBA subject line from the above post may look like this:\fP
 .br 
-Here are some songs \- PAR File 1 of 4: parfile.par (1/1)
+Here are some songs \- PAR File 1 of 4: "parfile.par" yEnc (1/1)
 .TP 
 \fBPost parts 3, 4, and 5 of track01.mp3 to alt.binaries.test:\fP
 .br 
@@ -319,7 +304,7 @@ newspost \-q \-s '2 songs' Track01.mp3:0 Track02.mp3
 .TP 
 \fBA subject line from the above post may look like this:\fP
 .br 
-2 songs \- File 2 of 2: Track02.mp3 (1/8)
+2 songs \- File 2 of 2: "Track02.mp3" yEnc (1/8)
 .TP 
 \fBPost an .SFV file and Track02.mp3, but include Track01.mp3 in the .SFV file:\fP
 .br 
