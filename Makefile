@@ -10,7 +10,7 @@ SOLARIS_LIBS = -lsocket -lnsl
 QNX_LIBS = -lsocket
 
 PEDANTIC_FLAGS = -g -O2 -Wall -pedantic
-DEV_FLAGS = -ggdb -Wall
+DEV_FLAGS = -g -O2 -Wall
 
 all: opt
 

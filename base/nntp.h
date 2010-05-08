@@ -3,7 +3,6 @@
 #define __NNTP_H__
 
 #include "newspost.h"
-#include "queue.h"
 
 #define NNTP_AUTHENTICATION_SUCCESSFUL "281"
 #define NNTP_MORE_AUTHENTICATION_REQUIRED "381"

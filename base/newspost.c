@@ -82,6 +82,7 @@ int newspost(newspost_data *data, SList *file_list) {
 	return retval;
 }
 
+
 /**
 *** Private Routines
 **/

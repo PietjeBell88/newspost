@@ -8,7 +8,7 @@
 
 #define SLEEP_TIME 10 /* time to pause before posting in seconds */
 
-#define SOCKET_RECONNECT_WAIT_SECONDS 120
+#define SOCKET_RECONNECT_WAIT_SECONDS 120 /* time to wait between connect retries */
 
 /* #define ALLOW_NO_SUBJECT */ /* makes the subject line optional */
 
@@ -36,7 +36,7 @@
 #define VERSION "2.2.1"
 #define PAR_CLIENT 0xFE020101
 
-#define NEWSPOSTURL "http://newspost.unixcab.org/ & http://github.com/PietjeBell88/newspost"
+#define NEWSPOSTURL "http://github.com/PietjeBell88/newspost"
 #define NEWSPOSTNAME "Newspost"
 #define USER_AGENT NEWSPOSTNAME "/" VERSION " (" NEWSPOSTURL ")"
 
