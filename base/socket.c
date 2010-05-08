@@ -77,7 +77,7 @@ defined(__SVR4) || defined(__svr4__))
 		close (sockfd);
 		return FAILED_TO_CREATE_SOCKET;
 	}
-	
+
 	on = 1;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE,
 	    (char*) &on, sizeof(on)) < 0) {

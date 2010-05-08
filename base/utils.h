@@ -2,6 +2,21 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
+#include <pthread.h>
+#include <sys/stat.h>
+#include <stdio.h>
+
+/* FIXME: use inttypes.h? */
+/* ONLY CHANGE THESE IF YOU GET AN ERROR DURING COMPILATION */
+typedef unsigned char           n_uint8; /* 1 byte unsigned integer */
+typedef unsigned short int      n_uint16; /* 2 byte unsigned integer */
+typedef unsigned int       	n_uint32; /* 4 byte unsigned integer */
+typedef long long               n_int64; /* 8 byte signed integer */
+
+typedef n_uint8                 boolean;
+#define FALSE 0
+#define TRUE 1
+
 typedef struct{
 	char *data;
 	long length;
@@ -20,6 +35,13 @@ typedef struct {
 	Buff *filename;
 	n_uint32 crc;
 	boolean *parts;
+	int number_enc_parts;
+	int parts_to_post;
+
+	/* Only the values below will change while posting */
+	pthread_rwlock_t *rwlock;
+	boolean post_started;
+	int parts_posted;
 }
 file_entry;
 

@@ -8,22 +8,19 @@
 
 #define SLEEP_TIME 10 /* time to pause before posting in seconds */
 
+#define SOCKET_RECONNECT_WAIT_SECONDS 120 /* time to wait between connect retries */
+
 /* #define ALLOW_NO_SUBJECT */ /* makes the subject line optional */
 
 /* #define WINSFV32_COMPATIBILITY_MODE */
 
 /* #define REPORT_ONLY_FULLPARTS */ /* limit update of KBps display */
 
-/* ONLY CHANGE THESE IF YOU GET AN ERROR DURING COMPILATION */
-typedef unsigned char           n_uint8; /* 1 byte unsigned integer */
-typedef unsigned short int      n_uint16; /* 2 byte unsigned integer */
-typedef unsigned int       	n_uint32; /* 4 byte unsigned integer */
-typedef long long               n_int64; /* 8 byte signed integer */
-
 /***********************************/
 /* END OF CONFIGURABLE DEFINITIONS */
 /***********************************/
 
+#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <stdio.h>
@@ -33,17 +30,13 @@ typedef long long               n_int64; /* 8 byte signed integer */
 #include <stdlib.h>
 #include <unistd.h>
 
-typedef n_uint8                 boolean;
-#define FALSE 0
-#define TRUE 1
-
 #include "utils.h"
 
 /* remember to change VERSION and PAR_CLIENT for new version numbers */
-#define VERSION "2.1.1"
+#define VERSION "2.2.1"
 #define PAR_CLIENT 0xFE020101
 
-#define NEWSPOSTURL "http://newspost.unixcab.org/"
+#define NEWSPOSTURL "http://github.com/PietjeBell88/newspost"
 #define NEWSPOSTNAME "Newspost"
 #define USER_AGENT NEWSPOSTNAME "/" VERSION " (" NEWSPOSTURL ")"
 
@@ -57,6 +50,12 @@ typedef n_uint8                 boolean;
 #define POSTING_NOT_ALLOWED -5
 #define POSTING_FAILED -6
 
+#define THREAD_INITIALIZING 0
+#define THREAD_CONNECTING 1
+#define THREAD_WAITING 2
+#define THREAD_POSTING 3
+#define THREAD_DONE 4
+
 typedef struct {
 	Buff * subject;
 	Buff * newsgroup;
@@ -66,6 +65,7 @@ typedef struct {
 	int port;
 	Buff * user;
 	Buff * password;
+	int threads;
 	int lines;			/* lines per message */
 	boolean yenc;
 	Buff * sfv;	/* filename for generated sfv file */
@@ -83,6 +83,17 @@ typedef struct {
 	SList * extra_headers;
 }
 newspost_data;
+
+typedef struct {
+	int thread_id;
+	int sockfd;
+
+	/* only the following properties need locking */
+	pthread_rwlock_t *rwlock;
+	int status;
+	long bytes_written; /* since the last progress */
+}
+newspost_threadinfo;
 
 int newspost(newspost_data *data, SList *file_list);
 

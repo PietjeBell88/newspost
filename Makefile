@@ -1,5 +1,7 @@
 CC=gcc
 OPT_FLAGS = -O2 -Wall
+OPT_LIBS = -lpthread
+
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 MANDIR = $(PREFIX)/man/man1
@@ -32,13 +34,13 @@ main:
 		parchive/*.o
 
 dev:
-	$(MAKE) main CFLAGS="$(DEV_FLAGS)" LIBS=""
+	$(MAKE) main CFLAGS="$(DEV_FLAGS)" LIBS="$(OPT_LIBS)"
 
 pedantic:
 	$(MAKE) main CFLAGS="$(PEDANTIC_FLAGS)" LIBS=""
 
 opt:
-	$(MAKE) main CFLAGS="$(OPT_FLAGS)" LIBS=""
+	$(MAKE) main CFLAGS="$(OPT_FLAGS)" LIBS="$(OPT_LIBS)"
 	-strip newspost
 
 

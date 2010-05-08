@@ -26,29 +26,29 @@
 *** Public Routines
 **/
 
-boolean nntp_logon(int sockfd, newspost_data *data) {
+boolean nntp_logon(newspost_threadinfo *tinfo, newspost_data *data) {
 	char buffer[STRING_BUFSIZE];
 
-	if (nntp_get_response(sockfd, buffer) < 0)
+	if (nntp_get_response(tinfo, buffer) < 0)
 		return FALSE;
 
 	if (data->user != NULL) {
 		sprintf(buffer, "AUTHINFO USER %s", data->user->data);
-		if (nntp_issue_command(sockfd, buffer) < 0)
+		if (nntp_issue_command(tinfo, buffer) < 0)
 			return FALSE;
-		if (nntp_get_response(sockfd, buffer) < 0)
+		if (nntp_get_response(tinfo, buffer) < 0)
 			return FALSE;
 		/* 381: More Authentication required */
 		if (strncmp(buffer,
 		    NNTP_MORE_AUTHENTICATION_REQUIRED, 3) == 0) {
 			sprintf(buffer, "AUTHINFO PASS %s", data->password->data);
-			if (nntp_issue_command(sockfd, buffer) < 0)
+			if (nntp_issue_command(tinfo, buffer) < 0)
 				return FALSE;
-			if (nntp_get_response(sockfd, buffer) < 0)
+			if (nntp_get_response(tinfo, buffer) < 0)
 				return FALSE;
 			if (strncmp(buffer,
 			    NTTP_AUTHENTICATION_UNSUCCESSFUL, 3) == 0) {
-				ui_nntp_authentication_failed(buffer);
+				ui_nntp_authentication_failed(tinfo, buffer);
 				return FALSE;
 			}
 		}
@@ -63,19 +63,19 @@ boolean nntp_logon(int sockfd, newspost_data *data) {
 		}
 		/* unknown response */
 		else
-			ui_nntp_unknown_response(buffer);
+			ui_nntp_unknown_response(tinfo, buffer);
 	}
 
 	return TRUE;
 }
 
-void nntp_logoff(int sockfd) {
+void nntp_logoff(newspost_threadinfo *tinfo) {
 	char tmpbuffer[STRING_BUFSIZE];
-	nntp_issue_command(sockfd, "QUIT");
-	nntp_get_response(sockfd, tmpbuffer);
+	nntp_issue_command(tinfo, "QUIT");
+	nntp_get_response(tinfo, tmpbuffer);
 }
 
-int nntp_post(int sockfd, const char *subject, newspost_data *data,
+int nntp_post(newspost_threadinfo *tinfo, const char *subject, newspost_data *data,
 	      const char *buffer, long length,
 	      boolean no_ui_updates) {
 	char response[STRING_BUFSIZE];
@@ -84,17 +84,18 @@ int nntp_post(int sockfd, const char *subject, newspost_data *data,
 	SList * listptr;
 	Buff * buff = NULL;
 	Buff * tmpbuff = NULL;
+	int sockfd = tinfo->sockfd;
 
-	nntp_issue_command(sockfd, "POST");
+	nntp_issue_command(tinfo, "POST");
 
-	nntp_get_response(sockfd, response);
+	nntp_get_response(tinfo, response);
 
 	if (strncmp(response, NNTP_POSTING_NOT_ALLOWED, 3) == 0)
 		return POSTING_NOT_ALLOWED;
 
 	if (strncmp(response, NNTP_PROCEED_WITH_POST, 3) != 0) {
 		/* this shouldn't really happen */
-		ui_nntp_unknown_response(response);
+		ui_nntp_unknown_response(tinfo, response);
 		return POSTING_FAILED;
 	}
 	
@@ -128,7 +129,7 @@ int nntp_post(int sockfd, const char *subject, newspost_data *data,
 	socket_write(sockfd, buff->data, buff->length);
 
 	if (!no_ui_updates)
-		ui_chunk_posted(0, 0);
+		ui_chunk_posted(tinfo, 0, 0);
 
 	pi = buffer;
 	i = 0;
@@ -137,9 +138,12 @@ int nntp_post(int sockfd, const char *subject, newspost_data *data,
 		socket_write(sockfd, pi, chunksize);
 		i += chunksize;
 		pi += chunksize;
+		pthread_rwlock_wrlock(tinfo->rwlock);
+		tinfo->bytes_written += chunksize;
+		pthread_rwlock_unlock(tinfo->rwlock);
 #ifndef REPORT_ONLY_FULLPARTS
 		if (!no_ui_updates)
-			chunksize = ui_chunk_posted(chunksize, i);
+			chunksize = ui_chunk_posted(tinfo, chunksize, i);
 #endif
 	}
 	socket_write(sockfd, pi, (length - i));
@@ -147,18 +151,22 @@ int nntp_post(int sockfd, const char *subject, newspost_data *data,
 
 	socket_write(sockfd, "\r\n.\r\n", 5);
 
-	nntp_get_response(sockfd, response);
+	nntp_get_response(tinfo, response);
+
+	pthread_rwlock_wrlock(tinfo->rwlock);
+	tinfo->bytes_written += (length - i);
+	pthread_rwlock_unlock(tinfo->rwlock);
 
 	if (!no_ui_updates)
-		ui_chunk_posted((length - i), i);
+		ui_chunk_posted(tinfo, (length - i), i);
 
 	if (strncmp(response, NNTP_POSTING_FAILED, 3) == 0) {
-		ui_nntp_posting_failed(response);
+		ui_nntp_posting_failed(tinfo, response);
 		return POSTING_FAILED;
 	}
 	else if (strncmp(response, NNTP_ARTICLE_POSTED_OK, 3) != 0) {
 		/* shouldn't really happen */
-		ui_nntp_unknown_response(response);
+		ui_nntp_unknown_response(tinfo, response);
 		return POSTING_FAILED;
 	}
 	buff_free(buff);
@@ -166,22 +174,25 @@ int nntp_post(int sockfd, const char *subject, newspost_data *data,
 }
 
 /* returns number of bytes written */
-int nntp_issue_command(int sockfd, const char *command) {
+int nntp_issue_command(newspost_threadinfo *tinfo, const char *command) {
 	int bytes_written;
+	int sockfd = tinfo->sockfd;
+
 	bytes_written = socket_write(sockfd, command, strlen(command));
 	if (bytes_written > 0) {
 		bytes_written += socket_write(sockfd, "\r\n", 2);
-		ui_nntp_command_issued(command);
+		ui_nntp_command_issued(tinfo, command);
 	}
 	return bytes_written;
 }
 
 /* returns number of bytes read */
-int nntp_get_response(int sockfd, char *response) {
+int nntp_get_response(newspost_threadinfo *tinfo, char *response) {
 	int bytes_read;
-	bytes_read = socket_getline(sockfd, response);
+
+	bytes_read = socket_getline(tinfo->sockfd, response);
 	if (bytes_read > 0)
-		ui_nntp_server_response(response);
+		ui_nntp_server_response(tinfo, response);
 
 	return bytes_read;
 }

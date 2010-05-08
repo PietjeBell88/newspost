@@ -1,4 +1,4 @@
-.TH "NEWSPOST" "1" "2.1.1" "Jim Faulkner" ""
+.TH "NEWSPOST" "1" "2.2.1" "Jim Faulkner" ""
 .SH "NAME"
 .LP 
 newspost \- a usenet binary autoposter
@@ -27,6 +27,9 @@ Sets your username on the news server to <\fIstring\fP>.
 \fB\-p\fR <\fIstring\fP>
 Sets your password on the news server to <\fIstring\fP>.
 .TP 
+\fB\-N\fR <\fIstring\fP>
+Sets the amount of threads to use to <\fInumber\fP>.
+.TP
 \fB\-f\fR <\fIaddress\fP>
 Your e\-mail address.  <\fIaddress\fP> must be a real e\-mail address, or
 your posts may fail.  If the USER and HOSTNAME environment variables are
@@ -328,6 +331,7 @@ newspost \-c songs.SFV \-s '2 songs' Track01.mp3:0 Track01.mp3
 Mostly written by Jim Faulkner <newspost@sdf.lonestar.org>, with some help from 
 William McBrine <wmcbrine@users.sf.net>. Portions borrowed from cksfv by 
 Bryan Call, and parchive by Willem Monsuwe.
+Threading and some small changes by Pietje Bell <pietjebell@ana-chan.com>
 .SH "AVAILABILITY"
 The most recent version of newspost is available at
-http://newspost.unixcab.org/
+http://github.com/PietjeBell88/newspost

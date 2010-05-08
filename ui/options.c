@@ -35,6 +35,7 @@
 #define port_option 'z'
 #define user_option 'u'
 #define password_option 'p'
+#define threads_option 'N'
 #define lines_option 'l'
 #define yenc_option 'y'
 #define sfv_option 'c'
@@ -68,6 +69,7 @@ static const char valid_flags[] = {
 	port_option, ':',
 	user_option, ':',
 	password_option, ':',
+	threads_option, ':',
 	lines_option, ':',
 	yenc_option,
 	sfv_option, ':',
@@ -101,6 +103,7 @@ enum {
 	port,
 	user,
 	password,
+	threads,
 	lines,
 	yenc,
 	filenumber,
@@ -124,6 +127,7 @@ static const char *rc_keyword[number_of_defaults] = {
 	"port",
 	"user",
 	"password",
+	"threads",
 	"lines",
 	"yenc",
 	"filenumber",
@@ -146,6 +150,7 @@ static const char *rc_comment[number_of_defaults] = {
 	"port of news server",
 	"username on news server",
 	"password on news server",
+	"number of threads to use",
 	"lines per message",
 	"0 to uuencode, 1 to yencode",
 	"0 doesn't include filenumber in subject line, 1 does",
@@ -227,6 +232,10 @@ SList *parse_input_files(int argc, char **argv, int optind,
 				/* it's a good file */
 				boolean postany = TRUE;
 
+				int numparts = get_number_of_encoded_parts(data, this_file_entry);
+				this_file_entry->number_enc_parts = numparts;
+				this_file_entry->parts_to_post = numparts;
+
 				/* for file parts */
 				if (thisfilepart == TRUE)
 					postany = parse_file_parts(data, 
@@ -235,10 +244,15 @@ SList *parse_input_files(int argc, char **argv, int optind,
 				else
 					this_file_entry->parts = NULL;
 
-				if (postany == TRUE)
+				if (postany == TRUE) {
+					/* initialize the read/write lock for this file entry */
+					this_file_entry->rwlock = (pthread_rwlock_t *) malloc(sizeof(pthread_rwlock_t));
+					pthread_rwlock_init(this_file_entry->rwlock, NULL);
+
 					/* add it to the list */
 					file_list = slist_append(file_list,
 							this_file_entry);
+				}
 			}
 		}
 		else {
@@ -366,6 +380,9 @@ void parse_defaults(newspost_data *data) {
 				    case password:
 					data->password = buff_create(data->password, "%s", setting);
 					break;
+				    case threads:
+					data->threads = atoi(setting);
+					break;
 				    case lines:
 					data->lines = atoi(setting);
 					break;
@@ -492,11 +509,13 @@ boolean set_defaults(newspost_data *data) {
 			fprintf(file, "# %s\n%s=%i\n\n",
 				rc_comment[port],
 				rc_keyword[port], data->port);
-			fprintf(file, "# %s\n%s=%s\n\n# %s\n%s=%s\n\n",
+			fprintf(file, "# %s\n%s=%s\n\n# %s\n%s=%s\n\n# %s\n%s=%i\n\n",
 				rc_comment[user],
 				rc_keyword[user], (data->user != NULL) ? data->user->data : "",
 				rc_comment[password],
-				rc_keyword[password], (data->password != NULL) ? data->password->data : "");
+				rc_keyword[password], (data->password != NULL) ? data->password->data : "",
+				rc_comment[threads],
+				rc_keyword[threads], data->threads);
 			fprintf(file, "# %s\n%s=%i\n\n# %s\n%s=%i\n\n"
 				"# %s\n%s=%i\n\n# %s\n%s=%i\n\n",
 				rc_comment[lines],
@@ -602,6 +621,10 @@ int parse_options(int argc, char **argv, newspost_data *data) {
 
 			case password_option:
 				data->password = buff_create(data->password, "%s", optarg);
+				break;
+
+			case threads_option:
+				data->threads = atoi(optarg);
 				break;
 
 			case lines_option:
@@ -819,6 +842,12 @@ void check_options(newspost_data *data) {
 			" is required.\n");
 		goterror = TRUE;
 	}
+	if (data->threads <= 0 ) {
+		fprintf(stderr,
+			"\nAmount of threads to use for posting"
+			" should be positive.\n");
+		goterror = TRUE;
+	}
 #ifndef ALLOW_NO_SUBJECT
 	if (data->subject == NULL) {
 		fprintf(stderr,
@@ -873,6 +902,7 @@ void print_help() {
 	printf("\n  -%c ARG - port number on the news server", port_option);
 	printf("\n  -%c ARG - username on the news server", user_option);
 	printf("\n  -%c ARG - password on the news server", password_option);
+	printf("\n  -%c ARG - amount of threads to use for posting", threads_option);
 	printf("\n  -%c ARG - your e-mail address", from_option);
 	printf("\n  -%c ARG - your full name",name_option);
 	printf("\n  -%c ARG - your organization", organization_option);
@@ -923,6 +953,7 @@ static boolean parse_file_parts(newspost_data *data,
 	numparts = get_number_of_encoded_parts(data, this_file_entry);
 	this_file_entry->parts = (boolean *) calloc((numparts + 1),
 		sizeof(boolean));
+
 	/* i is on the colon */
 	i++;
 	while (i < strlen(arg)) {
@@ -1007,11 +1038,14 @@ static boolean parse_file_parts(newspost_data *data,
 	postany = FALSE;
 	postall = TRUE;
 
-	for (i = 1; i <= numparts; i++)
+	for (i = 1; i <= numparts; i++) {
 		if (this_file_entry->parts[i] == TRUE)
 			postany = TRUE;
-		else
+		else {
 			postall = FALSE;
+			this_file_entry->parts_to_post--;
+		}
+	}
 
 	/* not posting any parts */
 	if (postany == FALSE) {
@@ -1095,7 +1129,7 @@ static void parse_delay_option(const char *option) {
 
 static void version_info() {
 	printf("\n" NEWSPOSTNAME " version " VERSION
-		"\nCopyright (C) 2001 - 2003 Jim Faulkner"
+		"\nCopyright (C) 2001 - 2010 Jim Faulkner"
 		"\nThis is free software; see the source for"
 		" copying conditions.  There is NO"
 		"\nwarranty; not even for MERCHANTABILITY or"
