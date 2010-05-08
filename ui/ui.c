@@ -476,9 +476,9 @@ void ui_post_done() {
 	if (bps > 1048576)
 		printf("%.2lf MB/second %5s\n", (double) bps / 1048576, "");
 	else if (bps > 1024)
-		printf("%li KB/second %5s\n", (int) bps / 1024, "");
+		printf("%li KB/second %5s\n", (long) bps / 1024, "");
 	else
-		printf("%li bytes/second %5s\n", (int) bps, "");
+		printf("%li bytes/second %5s\n", (long) bps, "");
 
 	fflush(stdout);
 
@@ -545,9 +545,9 @@ static void rate_print() {
 	if (bps > 1048576)
 		printf("%.2lf MB/second %5s\r", (double) bps / 1048576, "");
 	else if (bps > 1024)
-		printf("%li KB/second %5s\r", (int) bps / 1024, "");
+		printf("%li KB/second %5s\r", (long) bps / 1024, "");
 	else
-		printf("%li bytes/second %5s\r", (int) bps, "");
+		printf("%li bytes/second %5s\r", (long) bps, "");
 
 	fflush(stdout);
 }

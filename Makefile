@@ -33,7 +33,6 @@ main:
 	$(CC) -o newspost $(LIBS) base/*.o ui/*.o enc/*.o cksfv/*.o \
 		parchive/*.o
 
-
 dev:
 	$(MAKE) main CFLAGS="$(DEV_FLAGS)" LIBS="$(OPT_LIBS)"
 
