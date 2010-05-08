@@ -68,6 +68,7 @@ defined(__SVR4) || defined(__svr4__))
 			return FAILED_TO_RESOLVE_HOST;
 		memcpy(&serv_addr.sin_addr, hp->h_addr, hp->h_length);
 	}
+
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0)
 		return FAILED_TO_CREATE_SOCKET;
@@ -77,7 +78,6 @@ defined(__SVR4) || defined(__svr4__))
 		close (sockfd);
 		return FAILED_TO_CREATE_SOCKET;
 	}
-	
 	on = 1;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE,
 	    (char*) &on, sizeof(on)) < 0) {

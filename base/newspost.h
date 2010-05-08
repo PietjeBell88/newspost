@@ -50,6 +50,12 @@
 #define POSTING_NOT_ALLOWED -5
 #define POSTING_FAILED -6
 
+#define THREAD_INITIALIZING 0
+#define THREAD_CONNECTING 1
+#define THREAD_WAITING 2
+#define THREAD_POSTING 3
+#define THREAD_DONE 4
+
 typedef struct {
 	Buff * subject;
 	Buff * newsgroup;
@@ -84,6 +90,7 @@ typedef struct {
 
 	/* only the following properties need locking */
 	pthread_rwlock_t *rwlock;
+	int status;
 	long bytes_written; /* since the last progress */
 }
 newspost_threadinfo;

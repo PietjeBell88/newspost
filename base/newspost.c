@@ -150,6 +150,7 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	for(j = 0; j < data->threads; j++) {
 		/* set the thread's local data */
 		threadinfo_array[j].thread_id = j+1;
+		threadinfo_array[j].status = THREAD_INITIALIZING;
 		threadinfo_array[j].bytes_written = 0;
 		threadinfo_array[j].rwlock = (pthread_rwlock_t *) malloc(sizeof(pthread_rwlock_t));
 		pthread_rwlock_init(threadinfo_array[j].rwlock, NULL);
@@ -214,12 +215,18 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	fifo->producer_done = TRUE;
 	pthread_mutex_unlock(fifo->mut);
 
-	/* Signal that the producer is done,
-	   and wake-up sleeping threads so they can exit */
+	/* Signal that the producer is done */
 	pthread_cond_broadcast(fifo->cond_producer_done);
+
+	/* wake-up sleeping threads so they can exit */
 	pthread_cond_broadcast(fifo->cond_not_empty);
 
 	for(j = 0; j < data->threads; j++) {
+		pthread_rwlock_rdlock(threadinfo_array[j].rwlock);
+		if (threadinfo_array[j].status == THREAD_CONNECTING)
+			socket_close(threadinfo_array[j].sockfd);
+		pthread_rwlock_unlock(threadinfo_array[j].rwlock);
+
 		pthread_join(thread_array[j], NULL);
 	}
 
@@ -307,6 +314,10 @@ static void *poster_thread(void *arg)
 	article.partnumber = -1;
 	article.subject = NULL;
 
+	pthread_rwlock_wrlock(tinfo->rwlock);
+	tinfo->status = THREAD_CONNECTING;
+	pthread_rwlock_unlock(tinfo->rwlock);
+
 	/* create the socket */
 	while (tinfo->sockfd < 0) {
 		ui_socket_connect_start(tinfo, data->address->data);
@@ -348,6 +359,11 @@ static void *poster_thread(void *arg)
 		pthread_mutex_unlock(fifo->mut);
 	}
 	ui_socket_connect_done(tinfo);
+
+	pthread_rwlock_wrlock(tinfo->rwlock);
+	tinfo->status = THREAD_POSTING;
+	pthread_rwlock_unlock(tinfo->rwlock);
+
 	number_of_tries = 0;
 
 	/* log on to the server */
@@ -417,6 +433,10 @@ static void *poster_thread(void *arg)
 
 	buff_free(article.subject);
 	free(data_buffer);
+
+	pthread_rwlock_wrlock(tinfo->rwlock);
+	tinfo->status = THREAD_DONE;
+	pthread_rwlock_unlock(tinfo->rwlock);
 
 	pthread_exit(NULL);
 	return NULL;
