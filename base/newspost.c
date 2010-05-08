@@ -19,6 +19,8 @@
  * 
  */
 
+#include <pthread.h>
+#include <sys/time.h>
 #include "newspost.h"
 #include "queue.h"
 #include "../ui/ui.h"
@@ -212,8 +214,10 @@ static int encode_and_post(newspost_data *data, SList *file_list,
 	fifo->producer_done = TRUE;
 	pthread_mutex_unlock(fifo->mut);
 
-	/* Wake-up sleeping threads so they can exit */
-	pthread_cond_broadcast(fifo->notEmpty);
+	/* Signal that the producer is done,
+	   and wake-up sleeping threads so they can exit */
+	pthread_cond_broadcast(fifo->cond_producer_done);
+	pthread_cond_broadcast(fifo->cond_not_empty);
 
 	for(j = 0; j < data->threads; j++) {
 		pthread_join(thread_array[j], NULL);
@@ -260,16 +264,15 @@ static void post_file(newspost_data *data, queue *fifo, file_entry *file_data,
 		/* Add item to queue */
 		pthread_mutex_lock(fifo->mut);
 		while (fifo->full)
-			pthread_cond_wait(fifo->notFull, fifo->mut);
+			pthread_cond_wait(fifo->cond_not_full, fifo->mut);
 
 		queue_item_add(fifo, &article);
 
 		pthread_mutex_unlock(fifo->mut);
-		pthread_cond_signal(fifo->notEmpty);
+		pthread_cond_signal(fifo->cond_not_empty);
 	}
 	buff_free(subject);
 
-	//ui_posting_file_done();
 	return;
 }
 
@@ -293,6 +296,10 @@ static void *poster_thread(void *arg)
 
 	int number_of_bytes;
 
+	struct timespec   ts;
+	struct timeval    tp;
+
+
 	tinfo->sockfd = -1;
 
 	/* initialize */
@@ -309,6 +316,14 @@ static void *poster_thread(void *arg)
 			break;
 
 		ui_socket_connect_failed(tinfo, tinfo->sockfd);
+
+		gettimeofday(&tp, NULL);
+
+		/* Convert from timeval to timespec */
+		ts.tv_sec  = tp.tv_sec;
+		ts.tv_nsec = tp.tv_usec * 1000;
+		ts.tv_sec += SOCKET_RECONNECT_WAIT_SECONDS;
+
 		number_of_tries++;
 
 		if (number_of_tries >= 5) {
@@ -316,7 +331,21 @@ static void *poster_thread(void *arg)
 			free(data_buffer);
 			pthread_exit(NULL);
 		}
-		sleep(120);
+		pthread_mutex_lock(fifo->mut);
+
+		while(!fifo->producer_done) {
+			retval = pthread_cond_timedwait(fifo->cond_producer_done, fifo->mut, &ts);
+			if (retval == ETIMEDOUT || retval == 0)
+				break;
+		}
+
+		/* quit if the producer signalled it was done */
+		if (fifo->producer_done) {
+			pthread_mutex_unlock(fifo->mut);
+			free(data_buffer);
+			pthread_exit(NULL);
+		}
+		pthread_mutex_unlock(fifo->mut);
 	}
 	ui_socket_connect_done(tinfo);
 	number_of_tries = 0;
@@ -333,7 +362,7 @@ static void *poster_thread(void *arg)
 	while (TRUE) {
 		pthread_mutex_lock(fifo->mut);
 		while (fifo->empty && !fifo->producer_done)
-			pthread_cond_wait(fifo->notEmpty, fifo->mut);
+			pthread_cond_wait(fifo->cond_not_empty, fifo->mut);
 
 		retval = queue_item_del(fifo, &article);
 
@@ -342,7 +371,7 @@ static void *poster_thread(void *arg)
 		if (retval == QUEUE_PRODUCER_DONE)
 			break;
 
-		pthread_cond_signal(fifo->notFull);
+		pthread_cond_signal(fifo->cond_not_full);
 
 		number_of_bytes = get_encoded_part(data, article.file_data, article.partnumber, data_buffer);
 

@@ -8,6 +8,8 @@
 
 #define SLEEP_TIME 10 /* time to pause before posting in seconds */
 
+#define SOCKET_RECONNECT_WAIT_SECONDS 120
+
 /* #define ALLOW_NO_SUBJECT */ /* makes the subject line optional */
 
 /* #define WINSFV32_COMPATIBILITY_MODE */

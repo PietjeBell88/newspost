@@ -453,17 +453,34 @@ void ui_nntp_posting_retry(newspost_threadinfo *tinfo) {
 
 void ui_post_done() {
 	struct timeval current_time;
-	long total_time;
+	double bps, msecs_passed;
+	long seconds, microseconds;
 
 	gettimeofday(&current_time, NULL);
 
-	total_time = current_time.tv_sec - start_time.tv_sec;
+	seconds = current_time.tv_sec - start_time.tv_sec;
+	microseconds = current_time.tv_usec - start_time.tv_usec;
 
 	printf("\n");
-	time_print(total_time);
+	time_print(seconds);
 	printf(".     \n");
+
+	msecs_passed = seconds * 1000  + microseconds / 1000.0;
+
+	if (msecs_passed > 0)
+		bps = (1000.0 * total_bytes_written) / msecs_passed;
+	else
+		bps = 0.0;
+
 	printf("Average speed: ");
-	rate_print();
+	if (bps > 1048576)
+		printf("%.2lf MB/second %5s\n", (double) bps / 1048576, "");
+	else if (bps > 1024)
+		printf("%li KB/second %5s\n", (int) bps / 1024, "");
+	else
+		printf("%li bytes/second %5s\n", (int) bps, "");
+
+	fflush(stdout);
 
 	pthread_rwlock_destroy(progress_lock);
 	free(progress_lock);
@@ -523,8 +540,7 @@ static void rate_print() {
 	else
 		bps = 0.0;
 
-	if (total_parts_posted != total_number_of_parts)
-		printf("[%0*i/%i]  ", length_as_char(total_number_of_parts), total_parts_posted, total_number_of_parts);
+	printf("[%0*i/%i]  ", length_as_char(total_number_of_parts), total_parts_posted, total_number_of_parts);
 
 	if (bps > 1048576)
 		printf("%.2lf MB/second %5s\r", (double) bps / 1048576, "");
