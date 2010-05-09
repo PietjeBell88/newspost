@@ -19,12 +19,12 @@
  * 
  */
 
+#include <getopt.h>
 #include "../base/encode.h"
 #include "options.h"
 #include "ui.h"
 
-/* Command-line option keys */
-
+/* Command-line short option keys */
 #define help_option 'h'
 #define subject_option 's'
 #define newsgroup_option 'n'
@@ -56,10 +56,42 @@
 #define extraheader_option 'X'
 #define text_option 't'
 
+/* Command-line long option keys */
+#define help_long_option "help"
+#define subject_long_option "subject"
+#define newsgroup_long_option "newsgroup"
+#define from_long_option "from"
+#define name_long_option "name"
+#define organization_long_option "organization"
+#define address_long_option "host"
+#define port_long_option "port"
+#define user_long_option "user"
+#define password_long_option "password"
+#define threads_long_option "threads"
+#define lines_long_option "lines"
+#define uuenc_long_option "uuenc"
+#define sfv_long_option "sfv"
+#define par_long_option "par"
+#define parnum_long_option "parnum"
+#define filesperpar_long_option "files-par"
+#define reference_long_option "reference"
+#define default_long_option "writedefaults"
+#define version_long_option "version"
+#define filenumber_long_option "filenumber"
+#define verbose_long_option "verbose"
+#define delay_long_option "delay"
+#define noarchive_long_option "no-archive"
+#define followupto_long_option "followupto"
+#define replyto_long_option "replyto"
+#define tmpdir_long_option "tmpdir"
+#define disable_long_option "disable"
+#define extraheader_long_option "extraheader"
+#define text_long_option "text"
+
 /* Option table for getopt() -- options which take parameters
    are followed by colons */
 
-static const char valid_flags[] = {
+static const char short_options[] = {
 	help_option,
 	subject_option, ':',
 	newsgroup_option, ':',
@@ -92,6 +124,43 @@ static const char valid_flags[] = {
 	text_option,
 	'\0'
 };
+
+/* long options struct for getopt_long */
+
+static struct option long_options[] =
+{
+	{ help_long_option,               no_argument, NULL, help_option },
+	{ subject_long_option,      required_argument, NULL, subject_option },
+	{ newsgroup_long_option,    required_argument, NULL, newsgroup_option },
+	{ from_long_option,         required_argument, NULL, from_option },
+	{ organization_long_option, required_argument, NULL, organization_option },
+	{ address_long_option,      required_argument, NULL, address_option },
+	{ port_long_option,         required_argument, NULL, port_option },
+	{ user_long_option,         required_argument, NULL, user_option },
+	{ password_long_option,     required_argument, NULL, password_option },
+	{ threads_long_option,      required_argument, NULL, threads_option },
+	{ lines_long_option,        required_argument, NULL, lines_option },
+	{ uuenc_long_option,              no_argument, NULL, uuenc_option },
+	{ sfv_long_option,          required_argument, NULL, sfv_option },
+	{ par_long_option,          required_argument, NULL, par_option },
+	{ parnum_long_option,       required_argument, NULL, parnum_option },
+	{ reference_long_option,    required_argument, NULL, reference_option },
+	{ default_long_option,            no_argument, NULL, default_option },
+	{ version_long_option,            no_argument, NULL, version_option },
+	{ filenumber_long_option,         no_argument, NULL, filenumber_option },
+	{ delay_long_option,        required_argument, NULL, delay_option },
+	{ verbose_long_option,            no_argument, NULL, verbose_option },
+	{ noarchive_long_option,          no_argument, NULL, noarchive_option },
+	{ followupto_long_option,   required_argument, NULL, followupto_option },
+	{ replyto_long_option,      required_argument, NULL, replyto_option },
+	{ tmpdir_long_option,       required_argument, NULL, tmpdir_option },
+	{ disable_long_option,      required_argument, NULL, disable_option },
+	{ filesperpar_long_option,  required_argument, NULL, filesperpar_option },
+	{ name_long_option,         required_argument, NULL, name_option },
+	{ extraheader_long_option,  required_argument, NULL, extraheader_option },
+	{ text_long_option,         required_argument, NULL, text_option },
+	{ NULL,                           no_argument, NULL, 0 },
+};		
 
 /* Symbolic labels for .newspostrc keywords */
 
@@ -573,7 +642,7 @@ boolean set_defaults(newspost_data *data) {
 
 /* returns index of first non-option argument */
 int parse_options(int argc, char **argv, newspost_data *data) {
-	int flag, i;
+	int flag, i, long_options_index;
 	SList *listptr;
 	Buff *header = NULL;
 	boolean isflag = FALSE;
@@ -581,7 +650,8 @@ int parse_options(int argc, char **argv, newspost_data *data) {
 	opterr = 0;
 
 	while (TRUE) {
-		flag = getopt(argc, argv, valid_flags);
+		long_options_index = -1;
+		flag = getopt_long(argc, argv, short_options, long_options, &long_options_index);
 		if (flag == -1)
 			break;
 		else {
@@ -773,13 +843,13 @@ int parse_options(int argc, char **argv, newspost_data *data) {
 				   sends me to this case though the man
 				   page says it should send me to the
 				   next */
-				for (i = 0 ; valid_flags[i] != '\0' ; i++) {
-					while (valid_flags[i] == ':') {
+				for (i = 0 ; short_options[i] != '\0' ; i++) {
+					while (short_options[i] == ':') {
 						i++;
 					}
-					if (valid_flags[i] == '\0')
+					if (short_options[i] == '\0')
 						break;
-					if (optopt == valid_flags[i])
+					if (optopt == short_options[i])
 						isflag = TRUE;
 				}
 				if (!isflag) {
@@ -897,43 +967,36 @@ void print_help() {
 	printf("\n\nUsage: newspost [OPTIONS [ARGUMENTS]]"
 		" file1 file2 file3...");
 	printf("\nOptions:");
-	printf("\n  -%c ARG - hostname or IP of the news server",
-		address_option);
-	printf("\n  -%c ARG - port number on the news server", port_option);
-	printf("\n  -%c ARG - username on the news server", user_option);
-	printf("\n  -%c ARG - password on the news server", password_option);
-	printf("\n  -%c ARG - amount of threads to use for posting", threads_option);
-	printf("\n  -%c ARG - your e-mail address", from_option);
-	printf("\n  -%c ARG - your full name",name_option);
-	printf("\n  -%c ARG - your organization", organization_option);
-	printf("\n  -%c ARG - newsgroups to post to", newsgroup_option);
-	printf("\n  -%c ARG - subject", subject_option);
-	printf("\n  -%c ARG - newsgroup to put in the Followup-To header",
-		followupto_option);
-	printf("\n  -%c ARG - e-mail address to put in the Reply-To header",
-		replyto_option);
-	printf("\n  -%c ARG - reference these message IDs", reference_option);
-	printf("\n  -%c     - do NOT include \"X-No-Archive: yes\" header",
-		noarchive_option);
-	printf("\n  -%c ARG - a complete header line", extraheader_option);
-	printf("\n  -%c     - include \"File x of y\" in subject line",
-		filenumber_option);
-	printf("\n  -%c     - uuencode instead of yencode", uuenc_option);
-	printf("\n  -%c ARG - generate SFV file", sfv_option);
-	printf("\n  -%c ARG - generate PAR files",par_option);
-	printf("\n  -%c ARG - number of PAR volumes to create", parnum_option);
-	printf("\n  -%c ARG - number of files per PAR volume",
-		filesperpar_option);
-	printf("\n  -%c ARG - number of lines per message", lines_option);
-	printf("\n  -%c     - post one file as plain text", text_option);
-	printf("\n  -%c ARG - time to wait before posting", delay_option);
-	printf("\n  -%c ARG - use this directory for storing temporary files",
-		tmpdir_option);
-	printf("\n  -%c     - set current options as default", default_option);
-	printf("\n  -%c ARG - disable or clear another option", disable_option);
-	printf("\n  -%c     - be verbose", verbose_option);
-	printf("\n  -%c     - print version info and exit", version_option);
-	printf("\n  -%c     - display this help screen and exit", help_option);
+	printf("\n  --%-15s  -%c   <string> - hostname or IP of the news server", address_long_option, address_option);
+	printf("\n  --%-15s  -%c   <int>    - port number on the news server", port_long_option, port_option);
+	printf("\n  --%-15s  -%c   <string> - username on the news server", user_long_option, user_option);
+	printf("\n  --%-15s  -%c   <string> - password on the news server", password_long_option, password_option);
+	printf("\n  --%-15s  -%c   <int>    - amount of threads to use for posting", threads_long_option, threads_option);
+	printf("\n  --%-15s  -%c   <string> - your e-mail address", from_long_option, from_option);
+	printf("\n  --%-15s  -%c   <string> - your full name", name_long_option, name_option);
+	printf("\n  --%-15s  -%c   <string> - your organization", organization_long_option, organization_option);
+	printf("\n  --%-15s  -%c   <string> - newsgroups to post to", newsgroup_long_option, newsgroup_option);
+	printf("\n  --%-15s  -%c   <string> - subject", subject_long_option, subject_option);
+	printf("\n  --%-15s  -%c   <string> - newsgroup to put in the Followup-To header", followupto_long_option, followupto_option);
+	printf("\n  --%-15s  -%c   <string> - e-mail address to put in the Reply-To header", replyto_long_option, replyto_option);
+	printf("\n  --%-15s  -%c   <string> - reference these message IDs", reference_long_option, reference_option);
+	printf("\n  --%-15s  -%c            - do NOT include \"X-No-Archive: yes\" header", noarchive_long_option, noarchive_option);
+	printf("\n  --%-15s  -%c   <string> - a complete header line", extraheader_long_option, extraheader_option);
+	printf("\n  --%-15s  -%c            - include \"File x of y\" in subject line", filenumber_long_option, filenumber_option);
+	printf("\n  --%-15s  -%c            - uuencode instead of yencode", uuenc_long_option, uuenc_option);
+	printf("\n  --%-15s  -%c   <string> - generate SFV file", sfv_long_option, sfv_option);
+	printf("\n  --%-15s  -%c   <string> - generate PAR files",par_long_option, par_option);
+	printf("\n  --%-15s  -%c   <int>    - number of PAR volumes to create", parnum_long_option, parnum_option);
+	printf("\n  --%-15s  -%c   <int>    - number of files per PAR volume", filesperpar_long_option, filesperpar_option);
+	printf("\n  --%-15s  -%c   <int>    - number of lines per message", lines_long_option, lines_option);
+	printf("\n  --%-15s  -%c            - post one file as plain text", text_long_option, text_option);
+	printf("\n  --%-15s  -%c   <int>    - time to wait before posting", delay_long_option, delay_option);
+	printf("\n  --%-15s  -%c   <string> - use this directory for storing temporary files", tmpdir_long_option, tmpdir_option);
+	printf("\n  --%-15s  -%c            - set current options as default", default_long_option, default_option);
+	printf("\n  --%-15s  -%c   <char>   - disable or clear another option", disable_long_option, disable_option);
+	printf("\n  --%-15s  -%c            - be verbose", verbose_long_option, verbose_option);
+	printf("\n  --%-15s  -%c            - print version info and exit", version_long_option, version_option);
+	printf("\n  --%-15s  -%c            - display this help screen and exit", help_long_option, help_option);
 	printf("\nPlease see the newspost manpage for more"
 		" information and examples.");
 	printf("\n");
