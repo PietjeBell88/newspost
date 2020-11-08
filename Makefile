@@ -1,6 +1,6 @@
 CC=gcc
 OPT_FLAGS = -O2 -Wall
-OPT_LIBS = -lpthread
+OPT_LIBS = -pthread
 
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
